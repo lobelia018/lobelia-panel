@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LobeliaPanel · panel local de gang.fun</title>
+<style>
+:root{--bg:#0b0f17;--panel:rgba(19,26,38,.88);--panel2:#101722;--line:#243044;--tx:#e8edf5;--mut:#8da0bd;--buy:#2fca8f;--sell:#ff6b6b;--hi:#f6b73c;--r:16px;font-family:"Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-size:14px}
+button,input{font:inherit;color:inherit}button{cursor:pointer}
+:focus-visible{outline:2px solid var(--hi);outline-offset:2px}
+.num{font-family:Consolas,"Cascadia Mono",monospace}
+header{display:flex;gap:14px;align-items:center;padding:14px 22px;border-bottom:1px solid var(--line)}
+header h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.2px}
+#pf{margin-left:auto;font-size:12.5px;color:var(--mut)}
+main{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,1fr);gap:18px;padding:18px 22px;max-width:1250px;margin:auto}
+@media(max-width:860px){main{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.tab{background:none;border:1px solid var(--line);border-radius:99px;padding:6px 13px;color:var(--mut)}
+.tab.on{background:var(--panel2);color:var(--tx);border-color:var(--hi)}
+#list{max-height:62vh;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.row{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid transparent;border-radius:10px;background:var(--panel2);text-align:left;width:100%}
+.row:hover{border-color:var(--line)}.row.sel{border-color:var(--hi)}.row.hit{box-shadow:inset 3px 0 var(--buy)}
+.row img,.ph{width:34px;height:34px;border-radius:50%;background:#0b0f14;object-fit:cover}
+.sym{font-weight:700}.sub{color:var(--mut);font-size:12px}.r{text-align:right}
+.tag{font-size:11px;border:1px solid var(--line);border-radius:5px;padding:0 5px;color:var(--mut);margin-left:4px}
+.tag.warn{color:var(--hi);border-color:var(--hi)}
+.bar{height:4px;background:#0b0f14;border-radius:4px;margin-top:5px;overflow:hidden}.bar i{display:block;height:100%;background:var(--hi)}
+.sw{display:flex;flex-direction:column;gap:10px}
+.box{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
+.box label{color:var(--mut);font-size:12px}
+.io{display:flex;align-items:center;gap:8px;margin-top:6px}
+.io input{flex:1;min-width:0;background:none;border:0;font-size:24px;font-family:Consolas,monospace}
+.cur{background:#0b0f14;border-radius:99px;padding:5px 11px;font-weight:600;white-space:nowrap}
+.chips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.chip{background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:3px 10px;color:var(--mut)}
+.chip:hover{color:var(--tx)}
+.go{width:100%;padding:13px;border:0;border-radius:12px;font-weight:700;font-size:15px;color:#07120d;background:var(--buy)}
+.go.sell{background:var(--sell);color:#190808}.go:disabled{opacity:.4;cursor:not-allowed}
+#log{background:#0b0f14;border-radius:10px;padding:10px;font:12px/1.5 Consolas,monospace;max-height:170px;overflow:auto;white-space:pre-wrap;color:#b8c3d1;min-height:48px}
+.note{color:var(--mut);font-size:12px;line-height:1.45}
+details{margin-top:10px}summary{cursor:pointer;color:var(--mut)}
+.cfg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.cfg label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mut)}
+.cfg input{background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.term{grid-column:1/-1}
+#ca{background:#0b0f14;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+.live{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mut)}
+#liveSel{background:#0b0f14;border:1px solid var(--line);border-radius:8px;color:var(--tx);padding:3px 6px}
+#liveDot{width:8px;height:8px;border-radius:50%;background:var(--mut)}#liveDot.on{background:var(--buy);box-shadow:0 0 6px var(--buy)}
+.th{display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap}.th b{font-size:13px}
+#term{background:#020304;border:1px solid #1b2530;border-radius:10px;padding:10px 12px;height:260px;overflow:auto;font:12px/1.55 Consolas,"Cascadia Mono",monospace;color:#b7e4c7}
+.tl{white-space:pre-wrap;word-break:break-word}.tl .tt{color:#4b5a6b}.tl.err{color:#ff8f8f}
+#swTo,#swCa{width:100%;background:#0b0f14;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:7px 8px}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:url(/img/background) center/cover no-repeat;opacity:.24;pointer-events:none}
+body::after{content:"";position:fixed;inset:0;z-index:-1;background:radial-gradient(ellipse at 50% 0%,rgba(246,183,60,.07),transparent 60%);pointer-events:none}
+.card{backdrop-filter:blur(3px);box-shadow:0 8px 30px rgba(0,0,0,.28)}
+header{flex-wrap:wrap;border-bottom:1px solid rgba(36,48,68,.7);background:rgba(11,15,23,.55)}
+.brand{display:flex;flex-direction:column;gap:2px}.brand h1{font-size:22px}.brand h1 em{font-style:normal;color:var(--hi)}
+#signBtn{border-color:var(--hi);color:var(--hi)}#signBtn.ok{border-color:var(--buy);color:var(--buy);cursor:default;pointer-events:none}#signBtn:disabled{opacity:.5;cursor:wait}
+#langSel{background:#0b0f14;border:1px solid var(--line);border-radius:8px;color:var(--tx);padding:5px 8px}
+.rcol{display:flex;flex-direction:column;gap:18px;min-width:0}
+.support{display:grid;grid-template-columns:58px minmax(0,1fr);gap:12px;align-items:center;border-color:rgba(246,183,60,.35)}
+.support.noimg{grid-template-columns:minmax(0,1fr)}
+.support img{width:58px;height:58px;border-radius:50%;object-fit:cover;box-shadow:0 0 18px rgba(246,183,60,.4)}
+.support b{color:var(--hi)}.addr{display:flex;gap:8px;align-items:center;margin-top:7px}
+.addr code{font-size:11.5px;word-break:break-all;color:#e8edf5;background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:5px 8px;flex:1}
+.tab.on{border-color:var(--hi);color:var(--hi)}
+.go:not(.sell){background:linear-gradient(180deg,#38d79a,#2fca8f)}
+#note{width:100%;min-height:64px;max-height:180px;resize:vertical;margin-top:6px;background:#0b0f14;color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit;line-height:1.4}
+#note:focus{border-color:var(--hi);outline:0}
+.ncnt{float:right;font-size:11px}
+#cliUpd{border-color:var(--hi);margin:0 0 10px;font-size:12.5px;line-height:1.5}
+#cliUpd code{background:#0b0f14;border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:12px}
+</style></head><body>
+<header><div class="brand"><h1>LobeliaPanel <em>Local</em></h1><span class="note">panel local para gang.fun</span></div><span class="note num" id="px"></span><span id="pf">Revisando cuenta…</span><button class="chip" id="signBtn">Iniciar / verificar sesión</button><select id="langSel" aria-label="Language"><option value="es">Español</option><option value="en">English</option><option value="zh">简体中文</option><option value="zt">繁體中文</option></select></header>
+<main>
+<section class="card">
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-s="hot">Populares</button><button class="tab" data-s="new">Nuevos</button>
+    <button class="tab" data-s="neargrad">Cerca de graduar</button><button class="tab" data-s="scan">Escáner</button>
+    <span class="live"><i id="liveDot"></i><span id="liveSt"></span><select id="liveSel" aria-label="Live"><option value="5" selected>5 s</option><option value="10">10 s</option><option value="20">20 s</option><option value="60">60 s</option><option value="0">⏸</option></select></span>
+  </div>
+  <div id="scanbox" hidden>
+    <div class="chips" style="margin:0 0 8px;align-items:center"><button class="go" id="scanNow" style="width:auto;padding:8px 16px;background:var(--hi);color:#1a1200">Escanear ahora</button><button class="go" id="scanStop" style="width:auto;padding:8px 16px;background:var(--sell);color:#190808">Detener Escáner</button><label class="note"><input type="checkbox" id="c_auto" checked> Automático</label><label class="note"><input type="checkbox" id="c_all"> Mostrar también los que no cumplen</label></div><div class="note" id="scanSt">Pulsa «Escanear ahora» (una vez) para activar también el sonido de alerta.</div>
+    <div class="cfg">
+      <label>Progreso mín. (%)<input id="c_pmin" type="number" value="20"></label>
+      <label>Progreso máx. (%)<input id="c_pmax" type="number" value="80"></label>
+      <label>Volumen 24 h mín. (USD)<input id="c_vol" type="number" value="1000"></label>
+      <label>Volumen / valor de mercado mín.<input id="c_rat" type="number" step="0.05" value="0.25"></label>
+    </div>
+    <label class="note" style="display:block;margin:8px 0"><input type="checkbox" id="c_bnb"> Solo tokens que se pagan con BNB (si no, también GANG, USDT, etc.)</label>
+  </div>
+  <div id="cliUpd" class="box" hidden></div>
+  <div id="list"><p class="note">Cargando tokens…</p></div>
+</section>
+<div class="rcol">
+<div class="card support"><img src="/img/icon" alt="" onerror="this.parentElement.classList.add('noimg');this.remove()"><div><b>Apoya a Lobelia Coin</b>
+<div class="note">Compra un poco de mi token para probar el sistema y apoyar el proyecto. Es experimental y de alto riesgo; no es asesoramiento financiero.</div>
+<div class="addr"><code id="supAddr" class="num">0x5ff77b7f56f145c539a04ce24d9337b4231195e8</code><button class="chip" id="supCopy">Copiar</button></div></div></div>
+<section class="card sw">
+  <div class="tabs"><button class="tab on" id="mBuy">Comprar</button><button class="tab" id="mSell">Vender</button><button class="tab" id="mSwap">Convertir</button><button class="tab" id="mCreate">Crear token nuevo</button></div>
+<section id="createBox" class="box" hidden><h3 style="margin-top:0">Crear un token en gang.fun</h3><p class="note">La versión actual crea los tokens nuevos en GangLaunchpad (V3). V2 ya no admite crear tokens nuevos; los tokens V2 existentes siguen funcionando.</p>
+<label>Nombre del token</label><input id="ctName" maxlength="64" placeholder="Nombre" style="width:100%;margin:5px 0 10px;background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:9px">
+<label>Símbolo</label><input id="ctSymbol" maxlength="12" placeholder="TKN" style="width:100%;margin:5px 0 10px;background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:9px;text-transform:uppercase">
+<label>Logo del token (PNG/JPG/WEBP, máx. 512 KB)</label><input id="ctLogo" type="file" accept="image/png,image/jpeg,image/webp" style="display:block;margin:6px 0 10px">
+<label>Pensamiento / Manifiesto</label><textarea id="ctNote" maxlength="280" rows="3" placeholder="¿Por qué existe este token?" style="width:100%;margin:5px 0 10px;background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:9px"></textarea>
+<label>Moneda par</label><select id="ctPair" style="width:100%;margin:5px 0 10px;background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:9px;color:var(--tx)"><option value="BNB" selected>BNB (predeterminado)</option><option value="CUSTOM">Otra moneda ERC-20</option></select>
+<div id="ctPairFields" hidden><label>Contrato ERC-20 de la moneda par</label><input id="ctQuote" placeholder="0x…" style="width:100%;margin:5px 0 10px;background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:9px"><label>Pool de referencia PancakeSwap V2</label><input id="ctPool" placeholder="0x…" style="width:100%;margin:5px 0 10px;background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:9px"></div>
+<label>Tipo de lanzamiento</label><select id="ctKind" style="width:100%;margin:5px 0 10px;background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:9px;color:var(--tx)"><option value="v3" selected>GangLaunchpad V3 (actual)</option><option value="fair">Fair mint (lanzamiento justo)</option></select>
+<div id="ctTaxFields" class="cfg"><label>Impuesto de compra (%)<input id="ctBuyTax" type="number" min="0" max="5" value="0"></label><label>Impuesto de venta (%)<input id="ctSellTax" type="number" min="0" max="5" value="0"></label><label>Dividendos (%)<input id="ctDividend" type="number" min="0" max="100" value="0"></label></div>
+<div id="ctFairFields" hidden class="cfg"><label>BNB a recaudar<input id="ctRaise" type="number" min="5" max="50" value="10"></label><label>Límite por billetera (%)<input id="ctCap" type="number" min="0.25" max="1" step="0.25" value="1"></label><label>Línea de retención (%)<input id="ctHold" type="number" min="60" max="90" value="70"></label><label>Comisión de mint (%)<input id="ctFee" type="number" min="1" max="3" value="1"></label></div>
+<label>Sitio web (opcional)</label><input id="ctWebsite" placeholder="https://…" style="width:100%;margin:5px 0 10px;background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:9px"><label>X / Twitter (opcional)</label><input id="ctTwitter" placeholder="@usuario" style="width:100%;margin:5px 0 10px;background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:9px">
+<button class="go" id="ctPreview">Preparar creación (vista previa)</button><div id="ctStatus" class="note" style="margin-top:8px;white-space:pre-wrap"></div><button class="go" id="ctExecute" hidden style="margin-top:8px">Confirmar y ejecutar creación</button><p class="note">La vista previa no publica el token. La ejecución requiere aprobación en la Binance Agentic Wallet.</p></section>
+  <div id="sel" class="note">Elige un token de la lista.</div>
+  <div class="box" id="caBox" hidden><label for="ca" id="lCa">Contrato del token</label><div class="io"><input id="ca" class="num" style="font-size:14px" placeholder="Pega aquí la dirección 0x…" autocomplete="off" spellcheck="false"><button class="chip" id="caGo">Leer saldo</button></div><div class="chips" style="margin-top:8px"><button class="chip" id="myBal">Mis tokens (saldo)</button></div><div id="myList" class="note" style="margin-top:6px"></div><div class="note" id="caSt" style="margin-top:6px">También puedes tocar un token de la lista.</div></div>
+  <div class="box" id="swBox" hidden><div class="tabs" style="margin-bottom:8px"><button class="tab on" id="swIn">BNB → token</button><button class="tab" id="swOutB">token → BNB</button></div><label for="swTo" id="lSwTo">Convertir BNB a…</label><div class="io"><select id="swTo"></select></div><input id="swCa" class="num" hidden style="margin-top:8px;font-size:13px" placeholder="Contrato 0x… del token destino" autocomplete="off" spellcheck="false"></div>
+  <div class="box"><label id="lFrom">Pagas</label>
+    <div class="io"><input id="amt" class="num" inputmode="decimal" placeholder="0.0" autocomplete="off"><span class="cur" id="curFrom">BNB</span></div>
+    <div class="chips" id="chips"></div><div class="note num" id="usdNote" style="margin-top:6px"></div></div>
+  <div class="box"><label id="lTo">Recibes (estimado)</label>
+    <div class="io"><input id="est" class="num" readonly placeholder="0.0"><span class="cur" id="curTo">—</span></div>
+    <div class="note" id="estNote" style="margin-top:6px"></div><button class="chip" id="jump" hidden style="margin-top:6px"></button></div>
+  <button class="go" id="go" disabled>Comprar</button>
+  <div class="note" id="whyOff" style="margin-top:6px"></div>
+  <div class="box" id="noteBox"><label for="note">Nota (pensamiento)<span class="ncnt num" id="noteCnt">0/280</span></label>
+    <textarea id="note" maxlength="280" rows="3" placeholder="Escribe por qué compras o vendes ahora… (opcional)" autocomplete="off" spellcheck="true"></textarea>
+    <div class="note" style="margin-top:6px">Se publica en gang.fun junto con la operación y es permanente. Vacía = no se publica nada. Los tokens de GangLaunchpad (V3) no admiten notas.</div></div>
+  <div id="riskbox" class="box" hidden style="border-color:var(--hi)"><b>Binance marcó un riesgo</b><div class="note" id="riskTx" style="margin:6px 0"></div><div class="note">Si continúas, la app de Binance te pedirá confirmar la operación. Solo sigue si entiendes el riesgo.</div><div class="chips"><button class="chip" id="riskOk">Continuar</button><button class="chip" id="riskNo">Cancelar</button></div></div>
+  <div id="log" aria-live="polite">Aquí verás cada paso (wrap, approve, compra) mientras corre en segundo plano.</div>
+  <details><summary>Cómo funciona y límites</summary>
+    <p class="note">Cada orden ejecuta los pasos del CLI en cadena (wrap → approve → compra/venta) y espera la confirmación de cada uno. Se detiene si Binance marca un riesgo. No hay límite de monto en el panel: el único freno es la confirmación antes de cada orden y los límites de tu billetera en la app de Binance. Los tokens que se pagan con otra moneda (GANG, USDT, BNCB…) se compran con esa moneda: primero conviertes BNB en la pestaña «Convertir». Los tokens ya graduados se compran en PancakeSwap: usa «Convertir» pegando su contrato.</p></details>
+</section></div>
+<section class="card term"><div class="th"><b>Terminal de fondo</b><span class="note">todo lo que corre por detrás: escáner, CLI de gang, billetera y órdenes</span><span class="chips" style="margin:0 0 0 auto;align-items:center"><label class="note"><input type="checkbox" id="t_auto" checked> Seguir al final</label><button class="chip" id="tCopy">Copiar</button><button class="chip" id="tClear">Limpiar</button></span></div><div id="term" role="log" aria-live="off"></div></section>
+</main>
+<script>
+const S="__SESSION__";
+let signed=false;let lang="es";try{const nl=(navigator.language||"es").toLowerCase();lang=localStorage.getItem("lob_lang")||(nl.startsWith("es")?"es":/^zh-(tw|hk|mo|hant)/.test(nl)?"zt":nl.startsWith("zh")?"zh":"en");if(!["es","en","zh","zt"].includes(lang))lang="es"}catch(e){}
+const D=[
+["Revisando cuenta…","Checking account…"],
+["Cuenta lista ✓ ","Account ready ✓ "],
+["Revisar cuenta: ","Check account: "],
+["panel local para gang.fun","local panel for gang.fun"],
+["Iniciar / verificar sesión","Sign in / verify session"],
+["Apoya a Lobelia Coin","Support Lobelia Coin"],
+["Compra un poco de mi token para probar el sistema y apoyar el proyecto. Es experimental y de alto riesgo; no es asesoramiento financiero.","Buy a little of my token to test the system and support the project. It is experimental and high-risk; not financial advice."],
+["¡Copiado ✓","Copied ✓"],
+["Copiar","Copy"],
+["Limpiar","Clear"],
+["Populares","Popular"],
+["Nuevos","New"],
+["Cerca de graduar","Near graduation"],
+["Escáner","Scanner"],
+["Pulsa «Escanear ahora» (una vez) para activar también el sonido de alerta.","Click “Scan now” once to also enable the alert sound."],
+[" · haz clic en «Escanear ahora» para activar el sonido"," · click “Scan now” to enable sound"],
+["Escanear ahora","Scan now"],
+["Automático","Automatic"],
+["Mostrar también los que no cumplen","Also show tokens that don't match"],
+["Progreso mín. (%)","Min. progress (%)"],
+["Progreso máx. (%)","Max. progress (%)"],
+["Volumen 24 h mín. (USD)","Min. 24h volume (USD)"],
+["Volumen / valor de mercado mín.","Min. volume / market value"],
+["Solo tokens que se pagan con BNB (si no, también GANG, USDT, etc.)","Only tokens paid in BNB (otherwise GANG, USDT, etc. too)"],
+["Cargando tokens…","Loading tokens…"],
+["Ningún token cumple los filtros ahora. Baja el volumen mínimo o el ratio, o espera al próximo escaneo.","No token matches the filters right now. Lower the minimum volume or ratio, or wait for the next scan."],
+["Sin resultados.","No results."],
+["No se pudo leer el mercado: ","Could not read the market: "],
+["impuesto","tax"],
+["% de la curva","% of the curve"],
+["vol/valor","vol/value"],
+["Último escaneo ","Last scan "],
+["candidatos de ","candidates of "],
+["candidato de ","candidate of "],
+[" revisados"," checked"],
+["Comprarlo con BNB en PancakeSwap…","Buy it with BNB on PancakeSwap…"],
+["Convertir BNB a…","Convert BNB to…"],
+["Convertir","Convert"],
+["Comprar","Buy"],
+["Vender","Sell"],
+["Elige un token de la lista o pega su contrato.","Pick a token from the list or paste its contract."],
+["Elige un token de la lista.","Pick a token from the list."],
+["Pega el contrato del token que quieres vender.","Paste the contract of the token you want to sell."],
+["Contrato del token que quieres comprar (o elige uno de la lista)","Contract of the token you want to buy (or pick one from the list)"],
+["Contrato del token que quieres vender","Contract of the token you want to sell"],
+["Contrato del token","Token contract"],
+["Pega aquí la dirección 0x…","Paste the 0x… address here"],
+["Contrato 0x… del token destino","0x… contract of the target token"],
+["Leer saldo","Read balance"],
+["También puedes tocar un token de la lista.","You can also tap a token in the list."],
+["La dirección debe empezar con 0x y tener 42 caracteres.","The address must start with 0x and have 42 characters."],
+["Leyendo saldo…","Reading balance…"],
+["No se pudo leer ese token: ","Could not read that token: "],
+[" · se paga con "," · paid in "],
+[" · ya graduó"," · already graduated"],
+["Saldo: ","Balance: "],
+["Tu saldo de este token es 0.","Your balance of this token is 0."],
+["Par de ","Pair of "],
+["Otra (pegar contrato)…","Other (paste contract)…"],
+["Elige la moneda destino o pega su contrato.","Pick the target coin or paste its contract."],
+["Los tokens que se pagan con BNB no necesitan conversión.","Tokens paid in BNB don't need a conversion."],
+["Cotizando…","Quoting…"],
+["Estimado de la billetera (incluye comisiones y slippage de la ruta).","Wallet estimate (includes fees and route slippage)."],
+["Cotización sin cantidad legible: ","Quote without a readable amount: "],
+["Cotización: ","Quote: "],
+["Este token ya graduó: se compra en PancakeSwap, no en la curva.","This token has graduated: buy it on PancakeSwap, not on the curve."],
+["Este token ya graduó: se vende en PancakeSwap, no desde aquí.","This token has graduated: sell it on PancakeSwap, not from here."],
+["Se paga con ","Paid in "],
+[": el monto va en ",": the amount is in "],
+[". Si no tienes saldo, conviértelo desde BNB.",". If you have no balance, convert it from BNB."],
+["Conseguir ","Get "],
+[" con BNB…"," with BNB…"],
+["Token «soft» (archivo): el CLI decidirá si acepta la orden.","“Soft” (archived) token: the CLI will decide whether it accepts the order."],
+["Aproximado: precio actual de la curva menos 1% de fee. El precio real baja a medida que vendes más.","Approximate: current curve price minus 1% fee. The real price drops as you sell more."],
+["Sin estimado para este token. El registro mostrará lo que devuelva el CLI.","No estimate for this token. The log will show what the CLI returns."],
+["reembolso","refund"],
+["Pagas","You pay"],
+["Conviertes","You convert"],
+["Vendes (tu saldo: ","You sell (your balance: "],
+["Recibes (estimado)","You receive (estimated)"],
+["Recibes (aproximado)","You receive (approx.)"],
+[" · BNB a US$ "," · BNB at US$ "],
+["Precio de BNB no disponible por ahora","BNB price not available right now"],
+["Binance marcó un riesgo","Binance flagged a risk"],
+["Si continúas, la app de Binance te pedirá confirmar la operación. Solo sigue si entiendes el riesgo.","If you continue, the Binance app will ask you to confirm the operation. Only continue if you understand the risk."],
+["Continuar","Continue"],
+["Cancelar","Cancel"],
+["Aquí verás cada paso (wrap, approve, compra) mientras corre en segundo plano.","Each step (wrap, approve, buy) will show here while it runs in the background."],
+["Cómo funciona y límites","How it works & limits"],
+[" Ruta en 2 pasos: BNB → USDT ("," 2-step route: BNB → USDT ("],
+[" Vas a aprobar 2 operaciones en la app de Binance."," You will approve 2 operations in the Binance app."],
+["Terminal de fondo","Background terminal"],
+["todo lo que corre por detrás: escáner, CLI de gang, billetera y órdenes","everything running behind the scenes: scanner, gang CLI, wallet and orders"],
+["Seguir al final","Follow the end"],
+["Se ejecutarán todos los pasos automáticamente.","All steps will run automatically."],
+["¿Cerrar la sesión de la billetera de Binance?","Sign out of the Binance wallet?"],
+["Cerrar sesión","Sign out"],
+["Cargando…","Loading…"],
+["Elige un token","Pick a token"],
+["Detener Escáner","Stop Scanner"],
+["Escáner detenido. Pulsa «Escanear ahora» para reanudarlo.","Scanner stopped. Click “Scan now” to resume it."],
+["Obtener Precios","Get Prices"],
+["Sesión iniciada","Signed in"],
+["Cada orden ejecuta los pasos del CLI en cadena (wrap → approve → compra/venta) y espera la confirmación de cada uno. Se detiene si Binance marca un riesgo. No hay límite de monto en el panel: el único freno es la confirmación antes de cada orden y los límites de tu billetera en la app de Binance. Los tokens que se pagan con otra moneda (GANG, USDT, BNCB…) se compran con esa moneda: primero conviertes BNB en la pestaña «Convertir». Los tokens ya graduados se compran en PancakeSwap: usa «Convertir» pegando su contrato.","Each order runs the CLI steps in a chain (wrap → approve → buy/sell) and waits for each one to confirm. It stops if Binance flags a risk. The panel sets no amount limit: the only brakes are the confirmation before each order and your wallet limits in the Binance app. Tokens paid in another coin (GANG, USDT, BNCB…) are bought with that coin: first convert BNB in the “Convert” tab. Graduated tokens are bought on PancakeSwap: use “Convert” by pasting their contract."]
+];
+const Z=[
+["Revisando cuenta…","正在检查账户…"],
+["Cuenta lista ✓ ","账户就绪 ✓ "],
+["Revisar cuenta: ","请检查账户："],
+["panel local para gang.fun","gang.fun 本地面板"],
+["Iniciar / verificar sesión","登录 / 验证会话"],
+["Apoya a Lobelia Coin","支持 Lobelia Coin"],
+["Compra un poco de mi token para probar el sistema y apoyar el proyecto. Es experimental y de alto riesgo; no es asesoramiento financiero.","购买一点我的代币来测试系统并支持这个项目。这是实验性的高风险项目，不构成财务建议。"],
+["¡Copiado ✓","已复制 ✓"],
+["Copiar","复制"],
+["Limpiar","清除"],
+["Populares","热门"],
+["Nuevos","最新"],
+["Cerca de graduar","即将毕业"],
+["Escáner","扫描器"],
+["Pulsa «Escanear ahora» (una vez) para activar también el sonido de alerta.","点击“立即扫描”（一次）以同时启用提示音。"],
+[" · haz clic en «Escanear ahora» para activar el sonido"," · 点击“立即扫描”以启用声音"],
+["Escanear ahora","立即扫描"],
+["Detener Escáner","停止扫描器"],
+["Escáner detenido. Pulsa «Escanear ahora» para reanudarlo.","扫描器已停止。点击“立即扫描”可恢复。"],
+["Automático","自动"],
+["Mostrar también los que no cumplen","同时显示不符合条件的代币"],
+["Progreso mín. (%)","最低进度 (%)"],
+["Progreso máx. (%)","最高进度 (%)"],
+["Volumen 24 h mín. (USD)","24 小时最低成交量 (USD)"],
+["Volumen / valor de mercado mín.","最低成交量 / 市值比"],
+["Solo tokens que se pagan con BNB (si no, también GANG, USDT, etc.)","仅限以 BNB 计价的代币（否则也包括 GANG、USDT 等）"],
+["Cargando tokens…","正在加载代币…"],
+["Ningún token cumple los filtros ahora. Baja el volumen mínimo o el ratio, o espera al próximo escaneo.","目前没有代币符合筛选条件。请降低最低成交量或比例，或等待下一次扫描。"],
+["Sin resultados.","没有结果。"],
+["No se pudo leer el mercado: ","无法读取市场数据："],
+["impuesto","税"],
+["% de la curva","% 曲线进度"],
+["vol/valor","成交量/市值"],
+["Último escaneo ","上次扫描 "],
+["candidatos de ","个候选，共 "],
+["candidato de ","个候选，共 "],
+[" revisados"," 个已检查"],
+["Comprarlo con BNB en PancakeSwap…","用 BNB 在 PancakeSwap 购买…"],
+["Convertir BNB a…","将 BNB 兑换为…"],
+["Convertir","兑换"],
+["Comprar","购买"],
+["Vender","卖出"],
+["Elige un token de la lista o pega su contrato.","请从列表中选择代币或粘贴其合约地址。"],
+["Elige un token de la lista.","请从列表中选择代币。"],
+["Pega el contrato del token que quieres vender.","请粘贴要卖出的代币合约地址。"],
+["Contrato del token que quieres comprar (o elige uno de la lista)","要购买的代币合约（或从列表中选择）"],
+["Contrato del token que quieres vender","要卖出的代币合约"],
+["Contrato del token","代币合约"],
+["Pega aquí la dirección 0x…","在此粘贴 0x… 地址"],
+["Contrato 0x… del token destino","目标代币的 0x… 合约"],
+["Leer saldo","读取余额"],
+["Obtener Precios","获取价格"],
+["También puedes tocar un token de la lista.","也可以点击列表中的代币。"],
+["La dirección debe empezar con 0x y tener 42 caracteres.","地址必须以 0x 开头，共 42 个字符。"],
+["Leyendo saldo…","正在读取余额…"],
+["No se pudo leer ese token: ","无法读取该代币："],
+[" · se paga con "," · 计价币种："],
+[" · ya graduó"," · 已毕业"],
+["Saldo: ","余额："],
+["Tu saldo de este token es 0.","你的该代币余额为 0。"],
+["Par de ","交易对 "],
+["Otra (pegar contrato)…","其他（粘贴合约）…"],
+["Elige la moneda destino o pega su contrato.","请选择目标币种或粘贴其合约。"],
+["Los tokens que se pagan con BNB no necesitan conversión.","以 BNB 计价的代币无需兑换。"],
+["Cotizando…","正在报价…"],
+["Estimado de la billetera (incluye comisiones y slippage de la ruta).","钱包估算（含手续费和路径滑点）。"],
+["Cotización sin cantidad legible: ","报价中没有可读取的数量："],
+["Cotización: ","报价："],
+["Este token ya graduó: se compra en PancakeSwap, no en la curva.","该代币已毕业：请在 PancakeSwap 购买，而非通过曲线。"],
+["Este token ya graduó: se vende en PancakeSwap, no desde aquí.","该代币已毕业：请在 PancakeSwap 卖出，无法在此卖出。"],
+["Se paga con ","该代币以 "],
+[": el monto va en "," 计价：金额单位为 "],
+[". Si no tienes saldo, conviértelo desde BNB.","。如果没有余额，请先用 BNB 兑换。"],
+["Conseguir ","获取 "],
+[" con BNB…"," （使用 BNB）…"],
+["Token «soft» (archivo): el CLI decidirá si acepta la orden.","“Soft”（归档）代币：由 CLI 决定是否接受该订单。"],
+["Aproximado: precio actual de la curva menos 1% de fee. El precio real baja a medida que vendes más.","近似值：当前曲线价格减去 1% 手续费。卖出越多，实际价格越低。"],
+["Sin estimado para este token. El registro mostrará lo que devuelva el CLI.","该代币暂无估算。日志将显示 CLI 返回的内容。"],
+["reembolso","退款"],
+["Pagas","你支付"],
+["Conviertes","你兑换"],
+["Vendes (tu saldo: ","你卖出（你的余额："],
+["Recibes (estimado)","你将收到（估算）"],
+["Recibes (aproximado)","你将收到（近似）"],
+[" · BNB a US$ "," · BNB 价格 US$ "],
+["Precio de BNB no disponible por ahora","暂时无法获取 BNB 价格"],
+["Binance marcó un riesgo","Binance 标记了风险"],
+["Si continúas, la app de Binance te pedirá confirmar la operación. Solo sigue si entiendes el riesgo.","如果继续，Binance 应用会要求你确认该操作。仅在了解风险的情况下继续。"],
+["Continuar","继续"],
+["Cancelar","取消"],
+["Aquí verás cada paso (wrap, approve, compra) mientras corre en segundo plano.","此处将显示后台运行的每一步（wrap、approve、购买）。"],
+["Cómo funciona y límites","工作原理与限制"],
+[" Ruta en 2 pasos: BNB → USDT ("," 分两步兑换：BNB → USDT ("],
+[" Vas a aprobar 2 operaciones en la app de Binance."," 你需要在 Binance 应用中批准 2 笔操作。"],
+["Terminal de fondo","后台终端"],
+["todo lo que corre por detrás: escáner, CLI de gang, billetera y órdenes","后台运行的一切：扫描器、gang CLI、钱包和订单"],
+["Seguir al final","跟随到底部"],
+["Se ejecutarán todos los pasos automáticamente.","所有步骤将自动执行。"],
+["¿Cerrar la sesión de la billetera de Binance?","要退出 Binance 钱包会话吗？"],
+["Cerrar sesión","退出登录"],
+["Sesión iniciada","已登录"],
+["Cargando…","正在加载…"],
+["Elige un token","选择代币"],
+["Cada orden ejecuta los pasos del CLI en cadena (wrap → approve → compra/venta) y espera la confirmación de cada uno. Se detiene si Binance marca un riesgo. No hay límite de monto en el panel: el único freno es la confirmación antes de cada orden y los límites de tu billetera en la app de Binance. Los tokens que se pagan con otra moneda (GANG, USDT, BNCB…) se compran con esa moneda: primero conviertes BNB en la pestaña «Convertir». Los tokens ya graduados se compran en PancakeSwap: usa «Convertir» pegando su contrato.","每个订单会依次执行 CLI 步骤（wrap → approve → 买入/卖出），并等待每一步确认。如果 Binance 标记风险，则会停止。面板本身没有金额限制：唯一的限制是每笔订单前的确认，以及你在 Binance 应用中设置的钱包限额。以其他币种（GANG、USDT、BNCB…）计价的代币需用该币种购买：请先在“兑换”标签页中把 BNB 兑换成该币种。已毕业的代币在 PancakeSwap 购买：请在“兑换”中粘贴其合约。"]
+];
+const ZT=[
+["Revisando cuenta…","正在檢查賬戶…"],
+["Cuenta lista ✓ ","賬戶就緒 ✓ "],
+["Revisar cuenta: ","請檢查賬戶："],
+["panel local para gang.fun","gang.fun 本地面板"],
+["Iniciar / verificar sesión","登入 / 驗證會話"],
+["Apoya a Lobelia Coin","支援 Lobelia Coin"],
+["Compra un poco de mi token para probar el sistema y apoyar el proyecto. Es experimental y de alto riesgo; no es asesoramiento financiero.","購買一點我的代幣來測試系統並支援這個專案。這是實驗性的高風險專案，不構成財務建議。"],
+["¡Copiado ✓","已複製 ✓"],
+["Copiar","複製"],
+["Limpiar","清除"],
+["Populares","熱門"],
+["Nuevos","最新"],
+["Cerca de graduar","即將畢業"],
+["Escáner","掃描器"],
+["Pulsa «Escanear ahora» (una vez) para activar también el sonido de alerta.","點選“立即掃描”（一次）以同時啟用提示音。"],
+[" · haz clic en «Escanear ahora» para activar el sonido"," · 點選“立即掃描”以啟用聲音"],
+["Escanear ahora","立即掃描"],
+["Detener Escáner","停止掃描器"],
+["Escáner detenido. Pulsa «Escanear ahora» para reanudarlo.","掃描器已停止。點選“立即掃描”可恢復。"],
+["Automático","自動"],
+["Mostrar también los que no cumplen","同時顯示不符合條件的代幣"],
+["Progreso mín. (%)","最低進度 (%)"],
+["Progreso máx. (%)","最高進度 (%)"],
+["Volumen 24 h mín. (USD)","24 小時最低成交量 (USD)"],
+["Volumen / valor de mercado mín.","最低成交量 / 市值比"],
+["Solo tokens que se pagan con BNB (si no, también GANG, USDT, etc.)","僅限以 BNB 計價的代幣（否則也包括 GANG、USDT 等）"],
+["Cargando tokens…","正在載入代幣…"],
+["Ningún token cumple los filtros ahora. Baja el volumen mínimo o el ratio, o espera al próximo escaneo.","目前沒有代幣符合篩選條件。請降低最低成交量或比例，或等待下一次掃描。"],
+["Sin resultados.","沒有結果。"],
+["No se pudo leer el mercado: ","無法讀取市場資料："],
+["impuesto","稅"],
+["% de la curva","% 曲線進度"],
+["vol/valor","成交量/市值"],
+["Último escaneo ","上次掃描 "],
+["candidatos de ","個候選，共 "],
+["candidato de ","個候選，共 "],
+[" revisados"," 個已檢查"],
+["Comprarlo con BNB en PancakeSwap…","用 BNB 在 PancakeSwap 購買…"],
+["Convertir BNB a…","將 BNB 兌換為…"],
+["Convertir","兌換"],
+["Comprar","購買"],
+["Vender","賣出"],
+["Elige un token de la lista o pega su contrato.","請從列表中選擇代幣或貼上其合約地址。"],
+["Elige un token de la lista.","請從列表中選擇代幣。"],
+["Pega el contrato del token que quieres vender.","請貼上要賣出的代幣合約地址。"],
+["Contrato del token que quieres comprar (o elige uno de la lista)","要購買的代幣合約（或從列表中選擇）"],
+["Contrato del token que quieres vender","要賣出的代幣合約"],
+["Contrato del token","代幣合約"],
+["Pega aquí la dirección 0x…","在此貼上 0x… 地址"],
+["Contrato 0x… del token destino","目標代幣的 0x… 合約"],
+["Leer saldo","讀取餘額"],
+["Obtener Precios","獲取價格"],
+["También puedes tocar un token de la lista.","也可以點選列表中的代幣。"],
+["La dirección debe empezar con 0x y tener 42 caracteres.","地址必須以 0x 開頭，共 42 個字元。"],
+["Leyendo saldo…","正在讀取餘額…"],
+["No se pudo leer ese token: ","無法讀取該代幣："],
+[" · se paga con "," · 計價幣種："],
+[" · ya graduó"," · 已畢業"],
+["Saldo: ","餘額："],
+["Tu saldo de este token es 0.","你的該代幣餘額為 0。"],
+["Par de ","交易對 "],
+["Otra (pegar contrato)…","其他（貼上合約）…"],
+["Elige la moneda destino o pega su contrato.","請選擇目標幣種或貼上其合約。"],
+["Los tokens que se pagan con BNB no necesitan conversión.","以 BNB 計價的代幣無需兌換。"],
+["Cotizando…","正在報價…"],
+["Estimado de la billetera (incluye comisiones y slippage de la ruta).","錢包估算（含手續費和路徑滑點）。"],
+["Cotización sin cantidad legible: ","報價中沒有可讀取的數量："],
+["Cotización: ","報價："],
+["Este token ya graduó: se compra en PancakeSwap, no en la curva.","該代幣已畢業：請在 PancakeSwap 購買，而非透過曲線。"],
+["Este token ya graduó: se vende en PancakeSwap, no desde aquí.","該代幣已畢業：請在 PancakeSwap 賣出，無法在此賣出。"],
+["Se paga con ","該代幣以 "],
+[": el monto va en "," 計價：金額單位為 "],
+[". Si no tienes saldo, conviértelo desde BNB.","。如果沒有餘額，請先用 BNB 兌換。"],
+["Conseguir ","獲取 "],
+[" con BNB…"," （使用 BNB）…"],
+["Token «soft» (archivo): el CLI decidirá si acepta la orden.","“Soft”（歸檔）代幣：由 CLI 決定是否接受該訂單。"],
+["Aproximado: precio actual de la curva menos 1% de fee. El precio real baja a medida que vendes más.","近似值：當前曲線價格減去 1% 手續費。賣出越多，實際價格越低。"],
+["Sin estimado para este token. El registro mostrará lo que devuelva el CLI.","該代幣暫無估算。日誌將顯示 CLI 返回的內容。"],
+["reembolso","退款"],
+["Pagas","你支付"],
+["Conviertes","你兌換"],
+["Vendes (tu saldo: ","你賣出（你的餘額："],
+["Recibes (estimado)","你將收到（估算）"],
+["Recibes (aproximado)","你將收到（近似）"],
+[" · BNB a US$ "," · BNB 價格 US$ "],
+["Precio de BNB no disponible por ahora","暫時無法獲取 BNB 價格"],
+["Binance marcó un riesgo","Binance 標記了風險"],
+["Si continúas, la app de Binance te pedirá confirmar la operación. Solo sigue si entiendes el riesgo.","如果繼續，Binance 應用會要求你確認該操作。僅在瞭解風險的情況下繼續。"],
+["Continuar","繼續"],
+["Cancelar","取消"],
+["Aquí verás cada paso (wrap, approve, compra) mientras corre en segundo plano.","此處將顯示後臺執行的每一步（wrap、approve、購買）。"],
+["Cómo funciona y límites","工作原理與限制"],
+[" Ruta en 2 pasos: BNB → USDT ("," 分兩步兌換：BNB → USDT ("],
+[" Vas a aprobar 2 operaciones en la app de Binance."," 你需要在 Binance 應用中批准 2 筆操作。"],
+["Terminal de fondo","後臺終端"],
+["todo lo que corre por detrás: escáner, CLI de gang, billetera y órdenes","後臺執行的一切：掃描器、gang CLI、錢包和訂單"],
+["Seguir al final","跟隨到底部"],
+["Se ejecutarán todos los pasos automáticamente.","所有步驟將自動執行。"],
+["¿Cerrar la sesión de la billetera de Binance?","要退出 Binance 錢包會話嗎？"],
+["Cerrar sesión","退出登入"],
+["Sesión iniciada","已登入"],
+["Cargando…","正在載入…"],
+["Elige un token","選擇代幣"],
+["Cada orden ejecuta los pasos del CLI en cadena (wrap → approve → compra/venta) y espera la confirmación de cada uno. Se detiene si Binance marca un riesgo. No hay límite de monto en el panel: el único freno es la confirmación antes de cada orden y los límites de tu billetera en la app de Binance. Los tokens que se pagan con otra moneda (GANG, USDT, BNCB…) se compran con esa moneda: primero conviertes BNB en la pestaña «Convertir». Los tokens ya graduados se compran en PancakeSwap: usa «Convertir» pegando su contrato.","每個訂單會依次執行 CLI 步驟（wrap → approve → 買入/賣出），並等待每一步確認。如果 Binance 標記風險，則會停止。面板本身沒有金額限制：唯一的限制是每筆訂單前的確認，以及你在 Binance 應用中設定的錢包限額。以其他幣種（GANG、USDT、BNCB…）計價的代幣需用該幣種購買：請先在“兌換”標籤頁中把 BNB 兌換成該幣種。已畢業的代幣在 PancakeSwap 購買：請在“兌換”中貼上其合約。"]
+];
+const XD=[
+["Convertir a BNB desde…","Convert to BNB from…","兑换为 BNB，来源…","兌換為 BNB，來源…"],
+[" Ruta en 2 pasos: "," 2-step route: "," 分两步兑换："," 分兩步兌換："],
+["Nota (pensamiento)","Note (thought)","备注（想法）","備註（想法）"],
+["Escribe por qué compras o vendes ahora… (opcional)","Write why you are buying or selling now… (optional)","写下你现在买入或卖出的原因…（可选）","寫下你現在買入或賣出的原因…（可選）"],
+["Se publica en gang.fun junto con la operación y es permanente. Vacía = no se publica nada. Los tokens de GangLaunchpad (V3) no admiten notas.","It is published on gang.fun together with the trade and is permanent. Empty = nothing is published. GangLaunchpad (V3) tokens do not support notes.","将与交易一起公开发布在 gang.fun 上，且永久保存。留空则不发布任何内容。GangLaunchpad (V3) 代币不支持备注。","將與交易一起公開發布在 gang.fun 上，且永久保存。留空則不發布任何內容。GangLaunchpad (V3) 代幣不支援備註。"],
+["Nota pública (permanente en gang.fun): ","Public note (permanent on gang.fun): ","公开备注（在 gang.fun 上永久保存）：","公開備註（在 gang.fun 上永久保存）："]
+,
+["Crear token nuevo","Create new token","创建新代币","建立新代幣"],
+["Crear un token en gang.fun","Create a token on gang.fun","在 gang.fun 上创建代币","在 gang.fun 上建立代幣"],
+["La versión actual crea los tokens nuevos en GangLaunchpad (V3). V2 ya no admite crear tokens nuevos; los tokens V2 existentes siguen funcionando.","The current version creates new tokens on GangLaunchpad (V3). V2 no longer supports creating new tokens; existing V2 tokens keep working.","当前版本在 GangLaunchpad (V3) 上创建新代币。V2 不再支持创建新代币；已有的 V2 代币继续正常运行。","目前版本在 GangLaunchpad (V3) 上建立新代幣。V2 不再支援建立新代幣；既有的 V2 代幣仍可正常運作。"],
+["Nombre del token","Token name","代币名称","代幣名稱"],
+["Nombre","Name","名称","名稱"],
+["Símbolo","Symbol","代币符号","代幣符號"],
+["Logo del token (PNG/JPG/WEBP, máx. 512 KB)","Token logo (PNG/JPG/WEBP, max. 512 KB)","代币徽标（PNG/JPG/WEBP，最大 512 KB）","代幣標誌（PNG/JPG/WEBP，最大 512 KB）"],
+["Pensamiento / Manifiesto","Thought / Manifesto","想法 / 宣言","想法 / 宣言"],
+["¿Por qué existe este token?","Why does this token exist?","这个代币为什么存在？","這個代幣為什麼存在？"],
+["Moneda par","Pair token","交易对代币","交易對代幣"],
+["BNB (predeterminado)","BNB (default)","BNB（默认）","BNB（預設）"],
+["Otra moneda ERC-20","Another ERC-20 token","其他 ERC-20 代币","其他 ERC-20 代幣"],
+["Contrato ERC-20 de la moneda par","ERC-20 contract of the pair token","交易对代币的 ERC-20 合约","交易對代幣的 ERC-20 合約"],
+["Pool de referencia PancakeSwap V2","PancakeSwap V2 reference pool","PancakeSwap V2 参考池","PancakeSwap V2 參考池"],
+["Tipo de lanzamiento","Launch type","发行类型","發行類型"],
+["GangLaunchpad V3 (actual)","GangLaunchpad V3 (current)","GangLaunchpad V3（当前）","GangLaunchpad V3（目前）"],
+["Fair mint (lanzamiento justo)","Fair mint","公平铸造 (Fair mint)","公平鑄造 (Fair mint)"],
+["Impuesto de compra (%)","Buy tax (%)","买入税 (%)","買入稅 (%)"],
+["Impuesto de venta (%)","Sell tax (%)","卖出税 (%)","賣出稅 (%)"],
+["Dividendos (%)","Dividends (%)","分红 (%)","分紅 (%)"],
+["BNB a recaudar","BNB to raise","募集 BNB","募集 BNB"],
+["Límite por billetera (%)","Cap per wallet (%)","单钱包上限 (%)","單錢包上限 (%)"],
+["Línea de retención (%)","Hold line (%)","持有线 (%)","持有線 (%)"],
+["Comisión de mint (%)","Mint fee (%)","铸造费 (%)","鑄造費 (%)"],
+["Sitio web (opcional)","Website (optional)","网站（可选）","網站（可選）"],
+["X / Twitter (opcional)","X / Twitter (optional)","X / Twitter（可选）","X / Twitter（可選）"],
+["Preparar creación (vista previa)","Prepare creation (preview)","准备创建（预览）","準備建立（預覽）"],
+["Confirmar y ejecutar creación","Confirm and run creation","确认并执行创建","確認並執行建立"],
+["La vista previa no publica el token. La ejecución requiere aprobación en la Binance Agentic Wallet.","The preview does not publish the token. Running it requires approval in the Binance Agentic Wallet.","预览不会发布代币。执行需要在 Binance Agentic Wallet 中批准。","預覽不會發布代幣。執行需要在 Binance Agentic Wallet 中核准。"],
+["Preparando vista previa…","Preparing preview…","正在准备预览…","正在準備預覽…"],
+["Revisa los parámetros. La vista previa aún no ejecuta la transacción.","Review the parameters. The preview does not run the transaction yet.","请检查参数。预览尚未执行交易。","請檢查參數。預覽尚未執行交易。"],
+["Selecciona la imagen del logo.","Select the logo image.","请选择徽标图片。","請選擇標誌圖片。"],
+["El logo debe pesar 512 KB o menos.","The logo must be 512 KB or smaller.","徽标不得超过 512 KB。","標誌不得超過 512 KB。"],
+["Usa PNG, JPG o WEBP.","Use PNG, JPG or WEBP.","请使用 PNG、JPG 或 WEBP。","請使用 PNG、JPG 或 WEBP。"],
+["¿Confirmas la creación? Luego deberás aprobarla en Binance Agentic Wallet.","Confirm the creation? You will then have to approve it in Binance Agentic Wallet.","确认创建吗？之后你需要在 Binance Agentic Wallet 中批准。","確認建立嗎？之後你需要在 Binance Agentic Wallet 中核准。"],
+["Mis tokens (saldo)","My tokens (balance)","我的代币（余额）","我的代幣（餘額）"],
+["Pagas (tu saldo: ","You pay (your balance: ","你支付（你的余额：","你支付（你的餘額："],
+["Conviertes (tu saldo: ","You convert (your balance: ","你兑换（你的余额：","你兌換（你的餘額："],
+["No se pudo leer el mercado:","Could not read the market:","无法读取市场数据：","無法讀取市場資料："],
+["Último escaneo","Last scan","最近一次扫描","最近一次掃描"],
+["· haz clic en «Escanear ahora» para activar el sonido","· click “Scan now” to enable the sound","· 点击“立即扫描”以启用提示音","· 點擊「立即掃描」以啟用提示音"],
+["No se pudo leer ese token:","Could not read that token:","无法读取该代币：","無法讀取該代幣："],
+["· Tu CLI no reconoce este tipo de token: actualízalo (npm i -g @gangfun/cli@latest) y repite la corrección de baw.js.","· Your CLI does not recognise this token type: update it (npm i -g @gangfun/cli@latest) and repeat the baw.js fix.","· 你的 CLI 无法识别此类代币：请更新（npm i -g @gangfun/cli@latest）并重新应用 baw.js 修复。","· 你的 CLI 無法識別此類代幣：請更新（npm i -g @gangfun/cli@latest）並重新套用 baw.js 修正。"],
+["sin dato de saldo","no balance data","没有余额数据","沒有餘額資料"],
+["No se pudo leer tu saldo en la blockchain:","Could not read your balance on the blockchain:","无法读取你在区块链上的余额：","無法讀取你在區塊鏈上的餘額："],
+["· se paga con","· paid in","· 支付币种：","· 支付幣種："],
+["· saldo","· balance","· 余额","· 餘額"],
+["con BNB…","with BNB…","，使用 BNB…","，使用 BNB…"],
+["· NUEVOS: ","· NEW: ","· 新增：","· 新增："],
+["BNB a US$","BNB at US$","BNB 价格 US$","BNB 價格 US$"]
+];XD.forEach(([e,a,b,c])=>{D.push([e,a]);Z.push([e,b]);ZT.push([e,c])});
+const srt=L=>L.slice().sort((a,b)=>b[0].length-a[0].length),DICTS={en:srt(D),zh:srt(Z),zt:srt(ZT)},ORIG=new WeakMap(),LAST=new WeakMap(),TL=new WeakMap();
+const tr=s=>{if(lang==="es")return s;s=String(s);for(const[a,b]of DICTS[lang]||[])if(s.includes(a))s=s.split(a).join(b);return s};
+const T2=(es,en,zh,zt)=>lang==="en"?en:lang==="zh"?(zh||en):lang==="zt"?(zt||zh||en):es;
+function fix(n){const p=n.parentElement;if(!p||p.closest("#term,.sym,script,style"))return;const cur=n.nodeValue;
+ if(LAST.get(n)===cur){if(TL.get(n)===lang)return;const o=ORIG.get(n);LAST.delete(n);ORIG.delete(n);TL.delete(n);n.nodeValue=o;return}
+ if(lang!=="es"){const t=tr(cur);if(t!==cur){ORIG.set(n,cur);LAST.set(n,t);TL.set(n,lang);n.nodeValue=t}}}
+function walk(root){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode())fix(n);
+ document.querySelectorAll("[placeholder]").forEach(e=>{if(e.dataset.ph===undefined)e.dataset.ph=e.getAttribute("placeholder");e.setAttribute("placeholder",tr(e.dataset.ph))})}
+new MutationObserver(ms=>ms.forEach(m=>{if(m.type==="characterData")fix(m.target);else m.addedNodes.forEach(a=>{if(a.nodeType===3)fix(a);else if(a.nodeType===1){const w=document.createTreeWalker(a,NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode())fix(n)}})})).observe(document.body,{childList:true,subtree:true,characterData:true});
+const _confirm=window.confirm;window.confirm=m=>_confirm(tr(m));
+function setLang(l){lang=l;try{localStorage.setItem("lob_lang",l)}catch(e){}document.documentElement.lang=({es:"es",en:"en",zh:"zh-Hans",zt:"zh-Hant"})[l]||"es";
+ document.title="LobeliaPanel Local · "+tr("panel local para gang.fun").replace(/^local panel for /,"local panel for ").replace(/^panel local para /,"panel local de ");walk(document.body);
+ fetch("/api/lang",{method:"POST",headers:{"X-Session":S,"Content-Type":"application/json"},body:JSON.stringify({lang:l})}).catch(()=>{})}
+let forceAll=false,balStr="0",balErr="",estSeq=0,loadSeq=0,loading=false,liveT=null,jobFails=0,AC=null,mode="buy",tokens=[],sel=null,sort="hot",hits=new Set(),jobT=null,qT=null,bal=0,curJob=null,caT=null,bnbUsd=0,swPref="",tSeq=0,scanOn=true,swOut=false,swBal=0,swBalStr="0";
+const $=id=>document.getElementById(id);
+const api=(p,o={})=>fetch(p,{...o,headers:{"X-Session":S,"Content-Type":"application/json"}}).then(r=>r.json());
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const usd=n=>n>=1e6?(n/1e6).toFixed(2)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":Number(n).toFixed(2);
+const QN={"0x0000000000000000000000000000000000000000":"BNB","0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c":"BNB","0x0c6302401aa5325c2e36f170f52c00b1d220b405":"GANG","0x4902c5ebc598265ed2212b559b042de8a5eeec3f":"BNCB","0x55d398326f99059ff775485246999027b3197955":"USDT","0x9b8e987e6fec8cf1380c4dca7071e2c7853aeea1":"FXION"};
+const qn=a=>{a=String(a||"");const s=QN[a.toLowerCase()]||(a.startsWith("0x")?a.slice(0,6)+"…":a||"—");return s==="WBNB"?"BNB":s};
+const QA={GANG:"0x0c6302401aa5325c2e36f170f52c00b1d220b405",USDT:"0x55d398326f99059ff775485246999027b3197955",BNCB:"0x4902c5ebc598265ed2212b559b042de8a5eeec3f",FXION:"0x9b8e987e6fec8cf1380c4dca7071e2c7853aeea1"};
+const NB=["0x0000000000000000000000000000000000000000","0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c","0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"];
+const bnbAddr=a=>NB.includes(String(a).toLowerCase());
+const num=s=>parseFloat(String(s??"0").replace(/,/g,""))||0;
+const plain=n=>{if(!isFinite(n)||n<=0)return"0";let t=n.toFixed(n>=1?8:18);return t.replace(/\.?0+$/,"")||"0"};
+const errTxt=e=>typeof e==="string"?e:JSON.stringify(e);
+const isAddr=a=>/^0x[0-9a-fA-F]{40}$/.test(a);
+const buyable=t=>!!t&&!t.graduated;
+const isBnbQ=t=>["BNB","—"].includes(qn(t&&t.quote));
+const slog=(tag,msg)=>api("/api/log",{method:"POST",body:JSON.stringify({tag,msg})}).catch(()=>{});
+async function ensureQA(t){if(t.qaddr)return t.qaddr;const s=String(t.quote||"");if(isAddr(s))return t.qaddr=s;if(QA[s])return t.qaddr=QA[s];
+ const r=await api("/api/token?address="+t.address),x=(r.token&&typeof r.token==="object")?r.token:r,q=String(x.quote||"");if(isAddr(q))t.qaddr=q;return t.qaddr||""}
+function usdLine(a){const k=/^\d+(\.\d+)?$/.test(a)&&((mode==="swap"&&!swOut)||(mode==="buy"&&sel&&isBnbQ(sel)));
+ $("usdNote").textContent=!k?"":bnbUsd?`≈ US$ ${(num(a)*bnbUsd).toLocaleString(undefined,{maximumFractionDigits:2})} · BNB a US$ ${bnbUsd.toFixed(2)}`:"Precio de BNB no disponible por ahora";}
+async function loadPrice(){const r=await api("/api/bnbprice");bnbUsd=+r.usd||bnbUsd;$("px").textContent=bnbUsd?"BNB ≈ US$ "+bnbUsd.toFixed(2):"";usdLine($("amt").value.trim())}
+
+/* terminal de fondo: pinta lo que el servidor va anotando */
+const TAGN={en:{orden:"order",mercado:"market","escáner":"scanner",sesion:"session"},zh:{orden:"订单",mercado:"市场","escáner":"扫描器",sesion:"会话"},zt:{orden:"訂單",mercado:"市場","escáner":"掃描器",sesion:"會話"}};
+const TC={gang:"#5ad1e6",baw:"#f6b73c",orden:"#2fca8f","escáner":"#b99cff",mercado:"#7fb0ff",panel:"#8da0bd",precio:"#8da0bd",sesion:"#f6b73c"};
+async function tick(){let r;try{r=await api("/api/syslog?since="+tSeq)}catch(e){return}if(!r||!r.items)return;tSeq=r.last;const box=$("term");
+ r.items.forEach(x=>{const d=document.createElement("div");d.className="tl "+x.lvl;d.innerHTML=`<span class="tt">${esc(x.t)}</span> <span style="color:${TC[x.tag]||"#8a97a8"}">[${esc((TAGN[lang]||{})[x.tag]||x.tag)}]</span> `;d.append(document.createTextNode(x.m));box.appendChild(d)});
+ while(box.childElementCount>800)box.firstChild.remove();if(r.items.length&&$("t_auto").checked)box.scrollTop=box.scrollHeight}
+
+async function pf(){const r=await api("/api/preflight");signed=!!(r.success||r.status==="CONNECTED");$("signBtn").textContent=signed?"Sesión iniciada":"Iniciar / verificar sesión";$("signBtn").classList.toggle("ok",signed);
+ $("pf").textContent=r.success?"Cuenta lista ✓ "+(r.address||"").slice(0,6)+"…"+(r.address||"").slice(-4):"Revisar cuenta: "+((r.issues&&r.issues[0]&&r.issues[0].code)||r.error||"error");}
+async function load(auto){
+ if(auto&&loading)return;const my=++loadSeq;loading=true;
+ try{const r=await api("/api/markets?sort="+(sort==="scan"?"all":sort)+(auto?"&auto=1":""));
+  if(my!==loadSeq)return;
+  if(!r.success){$("liveDot").classList.remove("on");if(!auto||!tokens.length)$("list").innerHTML='<p class="note">No se pudo leer el mercado: '+esc(errTxt(r.error))+'</p>';return}
+  tokens=r.tokens||[];$("liveDot").classList.add("on");
+  const part=(r.partial||[]).length;$("liveSt").textContent=new Date().toLocaleTimeString()+(part?" ⚠":"");
+  $("liveSt").title=part?T2("Alguna lista no respondió; se muestra la última versión conocida (ver terminal).","A list did not respond; showing the last known version (see terminal)."):"";
+  cliBanner(r.cli_update);
+  if(sel){const n=tokens.find(x=>x.address===sel.address);if(n){["progressPct","graduated","fdvUsd","volume24hUsd","holders"].forEach(k=>{if(n[k]!==undefined)sel[k]=n[k]});if(!sel.price&&(n.priceBnb||n.price))sel.price=+(n.priceBnb||n.price);goState()}}
+  scan();render();
+ }catch(e){if(my===loadSeq){$("liveDot").classList.remove("on");if(!auto||!tokens.length)$("list").innerHTML='<p class="note">No se pudo leer el mercado: '+esc(String(e))+'</p>'}}
+ finally{if(my===loadSeq)loading=false}}
+function cliBanner(u){const b=$("cliUpd");if(!u||!(u.latest||u.cmd)){b.hidden=true;return}
+ const cmd=u.cmd||"npm i -g @gangfun/cli@latest";
+ b.innerHTML="<b>⚠ "+esc(T2("Tu CLI de gang está desactualizado","Your gang CLI is outdated","你的 gang CLI 已过期","你的 gang CLI 已過期"))+"</b> ("+esc(u.current||"?")+" → "+esc(u.latest||"?")+"). "+esc(T2("Puede no mostrar los tokens más recientes de gang.fun (p. ej. los de GangLaunchpad). Ejecuta en una terminal:","It may not show the newest gang.fun tokens (e.g. GangLaunchpad ones). Run in a terminal:","可能无法显示 gang.fun 的最新代币（例如 GangLaunchpad）。请在终端运行：","可能無法顯示 gang.fun 的最新代幣（例如 GangLaunchpad）。請在終端執行："))+' <code class="num">'+esc(cmd)+'</code> <button class="chip" id="cliCopy">'+esc(T2("Copiar","Copy","复制","複製"))+"</button>";
+ b.hidden=false;$("cliCopy").onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(cmd)}}
+function setLive(){clearInterval(liveT);const s=+$("liveSel").value;$("liveDot").classList.toggle("on",!!s&&tokens.length>0);if(!s)return;
+ liveT=setInterval(()=>{if(document.hidden)return;if(sort==="scan"&&!$("c_auto").checked)return;load(true)},s*1000)}
+function ok(t){const g=id=>parseFloat($(id).value)||0,mc=+t.fdvUsd||0,v=+t.volume24hUsd||0,p=+t.progressPct||0;
+ return p>=g("c_pmin")&&p<=g("c_pmax")&&v>=g("c_vol")&&mc>0&&v/mc>=g("c_rat")&&(!$("c_bnb").checked||isBnbQ(t));}
+function audio(){try{AC=AC||new AudioContext();AC.resume()}catch(e){}return AC}
+function beep(){const a=audio();if(!a||a.state!=="running")return false;[880,1100,880].forEach((f,i)=>{const o=a.createOscillator(),g=a.createGain();o.frequency.value=f;g.gain.value=.08;o.connect(g);g.connect(a.destination);o.start(a.currentTime+i*.2);o.stop(a.currentTime+i*.2+.12)});return true}
+function scan(quiet){if(sort!=="scan"||!scanOn)return;const n=new Set(tokens.filter(ok).map(t=>t.address));
+ const newer=[...n].filter(a=>!hits.has(a)),fresh=newer.length>0;let snd=true;if(fresh&&!quiet)snd=beep();hits=n;
+ const nm=a=>(tokens.find(t=>t.address===a)||{}).symbol||a.slice(0,8);
+ slog("escáner",`${quiet?"Filtros cambiados":"Escaneo"}: ${n.size} candidato${n.size===1?"":"s"} de ${tokens.length} revisados`+(n.size?" → "+[...n].slice(0,6).map(nm).join(", ")+(n.size>6?"…":""):"")+(fresh&&!quiet?" · NUEVOS: "+newer.map(nm).join(", "):""));
+ $("scanSt").textContent=`Último escaneo ${new Date().toLocaleTimeString()} · ${n.size} candidato${n.size===1?"":"s"} de ${tokens.length} revisados`+(snd?"":" · haz clic en «Escanear ahora» para activar el sonido");}
+function render(){
+ const sc=$("list").scrollTop;$("list").innerHTML="";
+ let L=tokens;if(sort==="scan"){L=[...tokens].sort((a,b)=>hits.has(b.address)-hits.has(a.address));if(!$("c_all").checked)L=L.filter(t=>hits.has(t.address))}
+ if(!L.length)$("list").innerHTML=sort==="scan"?'<p class="note">Ningún token cumple los filtros ahora. Baja el volumen mínimo o el ratio, o espera al próximo escaneo.</p>':'<p class="note">Sin resultados.</p>';
+ L.forEach(t=>{const b=document.createElement("button");b.className="row"+(sel&&sel.address===t.address?" sel":"")+(sort==="scan"&&hits.has(t.address)?" hit":"");
+  const img=t.logoUrl?`<img src="${esc(t.logoUrl)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'ph'}))">`:'<span class="ph"></span>';
+  b.innerHTML=`${img}<div><span class="sym">${esc(t.symbol)}</span><span class="tag ${isBnbQ(t)?"":"warn"}">${esc(qn(t.quote))}</span>${t.taxed?'<span class="tag warn">impuesto</span>':""}${t.track==="soft"?'<span class="tag warn">soft</span>':""}
+   <div class="sub">${t.holders} holders · ${(+t.progressPct).toFixed(1)}% de la curva${sort==="scan"&&+t.fdvUsd?` · vol/valor ${(t.volume24hUsd/t.fdvUsd).toFixed(2)}`:""}</div><div class="bar"><i style="width:${Math.min(100,+t.progressPct)}%"></i></div></div>
+   <div class="r num"><div>$${usd(+t.fdvUsd)}</div><div class="sub">vol $${usd(+t.volume24hUsd)}</div></div>`;
+  b.onclick=()=>{if(!sel||sel.address!==t.address)clearNote();if(mode==="sell"){$("ca").value=t.address;lookup()}else{sel=t;bal=0;$("ca").value=t.address;$("caSt").textContent="";modeUI();ensureQA(t).then(()=>{if(sel===t&&mode==="swap")swUI()})}render()};$("list").appendChild(b)});$("list").scrollTop=sc}
+
+/* vender: leer el saldo de un contrato pegado a mano */
+async function lookup(){const a=$("ca").value.trim();
+ if(!isAddr(a)){$("caSt").textContent=a?"La dirección debe empezar con 0x y tener 42 caracteres.":"También puedes tocar un token de la lista.";return}
+ $("caSt").textContent="Leyendo saldo…";
+ let r;try{r=await api("/api/token?address="+a)}catch(e){r={success:false,error:String(e)}}
+ if($("ca").value.trim()!==a)return;
+ if(!r||r.success===false){const em=errTxt((r&&r.error)||r);$("caSt").textContent="No se pudo leer ese token: "+em+(/not a Gang token/i.test(em)?" · Tu CLI no reconoce este tipo de token: actualízalo (npm i -g @gangfun/cli@latest) y repite la corrección de baw.js.":"");sel=null;bal=0;balStr="0";balErr=em;modeUI();return}
+ const t=(r.token&&typeof r.token==="object")?r.token:r;
+ const raw=r.myBalance??t.myBalance;
+ bal=num(raw);balStr=raw!==undefined&&raw!==null&&raw!==""?String(raw).replace(/,/g,""):"0";balErr=r._balanceError||(raw===undefined?"sin dato de saldo":"");
+ const old=sel&&sel.address===a?sel:null;
+ sel={address:a,symbol:t.symbol||r._symbol||"token",quote:t.quote||r._quote,qaddr:isAddr(String(t.quote||r._quote))?String(t.quote||r._quote):"",track:t.track,price:+(t.priceBnb||t.priceQuote||(old&&old.price)||0),graduated:!!t.graduated,degraded:!!r._degraded};
+ const w=r._wallet?" · "+T2("billetera ","wallet ")+r._wallet.slice(0,6)+"…"+r._wallet.slice(-4):"";
+ $("caSt").textContent=mode!=="sell"?`${sel.symbol} · se paga con ${qn(sel.quote)}${sel.graduated?" · ya graduó":""}`:bal>0?`Saldo: ${bal.toLocaleString()} ${sel.symbol}${w}`:"Tu saldo de este token es 0."+w;
+ if(mode==="sell"&&balErr)$("caSt").textContent="No se pudo leer tu saldo en la blockchain: "+balErr;
+ if(r._degraded)$("caSt").textContent+=" · "+T2("El CLI no reconoce este token (¿V3?); se usan datos de la cadena.","The CLI doesn't recognise this token (V3?); using on-chain data.");
+ modeUI();}
+let walletSwapTokens=[];
+async function refreshWalletSwapTokens(){try{const r=await api("/api/mytokens");if(r.success)walletSwapTokens=(r.tokens||[]).filter(t=>isAddr(t.address)&&num(t.balance)>0)}catch(e){}}
+function swOpts(){const o=[];walletSwapTokens.forEach(t=>o.push(["w:"+t.address,`${t.symbol||t.address.slice(0,8)} · saldo ${Number(t.balance).toLocaleString(undefined,{maximumFractionDigits:6})}`]));if(swOut&&sel&&sel.address)o.push(["s",sel.symbol||"token"]);if(sel&&sel.qaddr&&!isBnbQ(sel)&&!Object.values(QA).includes(sel.qaddr.toLowerCase()))o.push(["q","Par de "+sel.symbol+": "+qn(sel.quote)]);
+ Object.keys(QA).forEach(k=>o.push([k,k]));o.push(["x","Otra (pegar contrato)…"]);return o}
+function swDefault(){if(swPref)return"x";if(swOut&&sel&&sel.address)return"s";if(sel&&!isBnbQ(sel)){const q=qn(sel.quote);if(QA[q])return q;if(sel.qaddr)return"q"}return"GANG"}
+function swTarget(){const v=$("swTo").value;if(v.startsWith("w:")){const a=v.slice(2),t=walletSwapTokens.find(x=>x.address.toLowerCase()===a.toLowerCase());return t?{address:t.address,symbol:t.symbol||t.address.slice(0,8),balance:t.balance}:null}if(v==="x"){const a=$("swCa").value.trim();return isAddr(a)?{address:a,symbol:qn(a)}:null}
+ if(v==="s"&&sel&&isAddr(sel.address))return{address:sel.address,symbol:sel.symbol||qn(sel.address)};
+ if(QA[v])return{address:QA[v],symbol:v};if(v==="q"&&sel&&sel.qaddr)return{address:sel.qaddr,symbol:qn(sel.quote)};return null}
+async function swBalLoad(T){swBal=0;swBalStr="0";if(!swOut){try{const nb=await api("/api/bnbbalance");if(mode==="swap"&&!swOut&&nb.success){swBal=num(nb.balance);swBalStr=String(nb.balance);$("lFrom").textContent="Conviertes (tu saldo: "+swBal.toLocaleString(undefined,{maximumFractionDigits:6})+" BNB)"}}catch(e){}return}if(!T||!isAddr(T.address))return;const a=T.address;let r;try{r=await api("/api/balance?address="+a)}catch(e){return}
+ const c=swTarget();if(!swOut||mode!=="swap"||!c||c.address!==a||!r||!r.success)return;swBalStr=String(r.balance);swBal=num(r.balance);
+ $("lFrom").textContent=T2("Conviertes (tu saldo: ","You convert (your balance: ","你兑换（你的余额：","你兌換（你的餘額：")+swBal.toLocaleString()+")"}
+function swUI(){if(mode!=="swap")return;const T=swTarget(),o=swOut;$("swCa").hidden=$("swTo").value!=="x";
+ $("swIn").classList.toggle("on",!o);$("swOutB").classList.toggle("on",o);$("lSwTo").textContent=o?"Convertir a BNB desde…":"Convertir BNB a…";
+ $("sel").innerHTML=T?(o?`<b>${esc(T.symbol)}</b> → BNB <span class="num sub">${esc(T.address)}</span>`:`BNB → <b>${esc(T.symbol)}</b> <span class="num sub">${esc(T.address)}</span>`):"Elige la moneda destino o pega su contrato.";
+ $("curFrom").textContent=o?(T?T.symbol:"—"):"BNB";$("curTo").textContent=o?"BNB":(T?T.symbol:"—");$("lFrom").textContent="Conviertes";
+ $("chips").innerHTML=(o?["25","50","75","100"]:["0.001","0.002","0.005","0.01"]).map(v=>`<button class="chip" data-v="${v}">${o?v+"%":v+" BNB"}</button>`).join("");
+ $("estNote").textContent=T&&bnbAddr(T.address)?"Los tokens que se pagan con BNB no necesitan conversión.":"";
+ $("go").disabled=!T||bnbAddr(T.address);swBalLoad(T);est()}
+async function swEst(a){const T=swTarget();if(!T||bnbAddr(T.address)||!/^\d+(\.\d+)?$/.test(a)){$("est").value="";return}
+ $("estNote").textContent="Cotizando…";const o=swOut,r=await api("/api/swapquote",{method:"POST",body:JSON.stringify({token:T.address,amount:a,dir:o?"out":"in"})});
+ if($("amt").value.trim()!==a||mode!=="swap"||o!==swOut)return;
+ if(r.success&&r.out){$("est").value=r.out;const rt=o?T.symbol+" → USDT ("+r.mid+") → BNB":"BNB → USDT ("+r.mid+") → "+T.symbol;
+  $("estNote").textContent="Estimado de la billetera (incluye comisiones y slippage de la ruta)."+(r.route==="via-usdt"?" Ruta en 2 pasos: "+rt+". Vas a aprobar 2 operaciones en la app de Binance.":"");
+  if(o&&bnbUsd)$("usdNote").textContent="≈ US$ "+(num(r.out)*bnbUsd).toLocaleString(undefined,{maximumFractionDigits:2})+" · BNB a US$ "+bnbUsd.toFixed(2)}
+ else{$("est").value="";$("estNote").textContent=r.success?"Cotización sin cantidad legible: "+JSON.stringify(r.raw).slice(0,200):"Cotización: "+JSON.stringify(r.error||r)+(/315008/.test(JSON.stringify(r.error||r))?" · "+(bnbUsd&&!o?T2(`El monto supera 5 USD: prueba con ${(5/bnbUsd).toFixed(4)} BNB o menos.`,`The amount is over 5 USD: try ${(5/bnbUsd).toFixed(4)} BNB or less.`,`金额超过 5 USD：请尝试 ${(5/bnbUsd).toFixed(4)} BNB 或更少。`,`金額超過 5 USD：請嘗試 ${(5/bnbUsd).toFixed(4)} BNB 或更少。`):T2("El monto supera 5 USD: prueba con menos.","The amount is over 5 USD: try less.","金额超过 5 USD：请尝试更少。","金額超過 5 USD：請嘗試更少。")):"")}}
+function jumpBtn(t,addr){const j=$("jump");j.textContent=t;j.hidden=false;j.dataset.a=addr}
+$("jump").onclick=async()=>{const a=$("jump").dataset.a;if(sel)await ensureQA(sel);mode="swap";swOut=false;swPref=a;modeUI()};
+async function buyBalLoad(){const sl=sel;try{const nb=await api("/api/bnbbalance");if(mode==="buy"&&sel===sl&&nb.success)$("lFrom").textContent="Pagas (tu saldo: "+num(nb.balance).toLocaleString(undefined,{maximumFractionDigits:6})+" BNB)"}catch(e){}}
+async function modeUI(){const b=mode==="buy",s=mode==="sell",w=mode==="swap",bq=sel&&isBnbQ(sel);$("mCreate").classList.remove("on");$("noteBox").hidden=w;
+ $("mBuy").classList.toggle("on",b);$("mSell").classList.toggle("on",s);$("mSwap").classList.toggle("on",w);
+ $("caBox").hidden=w;$("swBox").hidden=!w;$("jump").hidden=true;
+ $("lCa").textContent=s?"Contrato del token que quieres vender":"Contrato del token que quieres comprar (o elige uno de la lista)";
+ $("sel").innerHTML=sel?`<b>${esc(sel.symbol)}</b> <span class="num sub">${esc(sel.address)}</span>`:(s?"Pega el contrato del token que quieres vender.":"Elige un token de la lista o pega su contrato.");
+ $("lFrom").textContent=w?"Conviertes":b?"Pagas":"Vendes (tu saldo: "+bal.toLocaleString()+")";$("lTo").textContent=s?"Recibes (aproximado)":"Recibes (estimado)";
+ if(b&&sel&&bq)buyBalLoad();
+ $("curFrom").textContent=w?"BNB":sel?(b?qn(sel.quote):sel.symbol):"—";$("curTo").textContent=w?"—":sel?(b?sel.symbol:qn(sel.quote)):"—";
+ forceAll=false;$("chips").innerHTML=(s?["25","50","75","100","all"]:(b&&sel&&!bq?[]:["0.001","0.002","0.005","0.01"])).map(v=>`<button class="chip" data-v="${v}">${v==="all"?T2("Todo","All"):s?v+"%":v+" BNB"}</button>`).join("");
+ $("caGo").textContent=s?"Leer saldo":"Obtener Precios";$("go").textContent=w?"Convertir":b?"Comprar":"Vender";$("go").className="go"+(s?" sell":"");$("est").value="";$("amt").value="";$("usdNote").textContent="";$("go").disabled=true;
+ if(w){await refreshWalletSwapTokens();$("swTo").innerHTML=swOpts().map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join("");$("swTo").value=swPref?"x":(walletSwapTokens.length?("w:"+walletSwapTokens[0].address):swDefault());if(swPref){$("swCa").value=swPref;swPref=""}swUI();return}
+ let n="";
+ if(b&&sel){if(sel.graduated){n="Este token ya graduó: se compra en PancakeSwap, no en la curva.";jumpBtn("Comprarlo con BNB en PancakeSwap…",sel.address)}
+  else{if(!bq){n="Se paga con "+qn(sel.quote)+": el monto va en "+qn(sel.quote)+". Si no tienes saldo, conviértelo desde BNB.";jumpBtn("Conseguir "+qn(sel.quote)+" con BNB…","")}
+   if(sel.track==="soft")n+=(n?" ":"")+"Token «soft» (archivo): el CLI decidirá si acepta la orden."}}
+ if(s&&sel&&sel.graduated)n="Este token ya graduó: se vende en PancakeSwap, no desde aquí.";
+ $("estNote").textContent=n;goState();}
+const noteTxt=()=>mode==="swap"?"":($("note").value||"").replace(/\s+/g," ").trim();
+function clearNote(){$("note").value="";noteCnt()}
+function noteCnt(){$("noteCnt").textContent=$("note").value.length+"/280"}
+$("note").oninput=noteCnt;
+let jobBusy=false;
+function goState(){if(mode==="swap")return;const a=$("amt").value.trim(),v=forceAll||(/^\d+(\.\d+)?$/.test(a)&&num(a)>0);let w="";
+ if(!sel)w=T2("Elige un token de la lista o pega su contrato.","Pick a token from the list or paste its contract.");
+ else if(sel.graduated)w=T2("Este token ya graduó: se opera en PancakeSwap.","This token graduated: trade it on PancakeSwap.");
+ else if(mode==="sell"&&bal<=0&&!forceAll)w=T2("Saldo 0 en tu billetera"+(balErr?" (no se pudo leer: "+balErr+")":"")+". Si acabas de comprar, espera unos segundos y pulsa «Leer saldo». Si sabes que lo tienes, usa «Todo» para intentar vender igualmente.","Balance is 0"+(balErr?" (could not read: "+balErr+")":"")+". If you just bought, wait a few seconds and press “Read balance”. If you know you hold it, press “All” to try selling anyway.");
+ else if(!v)w=T2("Escribe un monto para activar el botón.","Enter an amount to enable the button.");
+ $("go").disabled=jobBusy||!!w;$("whyOff").textContent=jobBusy?"":w}
+function setMode(m){mode=m;sel=null;bal=0;clearNote();$("ca").value="";$("caSt").textContent="También puedes tocar un token de la lista.";modeUI()}
+let createRequest=null;
+function leaveCreate(){$("createBox").hidden=true;$("go").hidden=false;$("caBox").hidden=mode==="swap";$("swBox").hidden=mode!=="swap";$("noteBox").hidden=mode==="swap";}
+$("mCreate").onclick=()=>{$("createBox").hidden=false;$("go").hidden=true;$("caBox").hidden=true;$("swBox").hidden=true;$("noteBox").hidden=true;["mBuy","mSell","mSwap","mCreate"].forEach(id=>$(id).classList.toggle("on",id==="mCreate"))};
+$("mBuy").onclick=()=>{leaveCreate();if(mode==="swap"){mode="buy";modeUI()}else setMode("buy")};$("mSell").onclick=()=>{leaveCreate();setMode("sell")};$("mSwap").onclick=()=>{leaveCreate();mode="swap";modeUI()};
+$("ctPair").onchange=()=>$("ctPairFields").hidden=$("ctPair").value!=="CUSTOM";
+$("ctKind").onchange=()=>{const f=$("ctKind").value==="fair";$("ctFairFields").hidden=!f;$("ctTaxFields").hidden=f};
+async function ctPayload(){const f=$("ctLogo").files[0];if(!f)throw Error("Selecciona la imagen del logo.");if(f.size>512*1024)throw Error("El logo debe pesar 512 KB o menos.");if(!["image/png","image/jpeg","image/webp"].includes(f.type))throw Error("Usa PNG, JPG o WEBP.");const logoData=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(",")[1]);r.onerror=rej;r.readAsDataURL(f)});const p={name:$("ctName").value.trim(),symbol:$("ctSymbol").value.trim().toUpperCase(),logo:f.name,mime:f.type,logoData,note:$("ctNote").value.trim(),kind:$("ctKind").value,website:$("ctWebsite").value.trim(),twitter:$("ctTwitter").value.trim(),pair:$("ctPair").value,buyTax:$("ctBuyTax").value,sellTax:$("ctSellTax").value,dividend:$("ctDividend").value,raise:$("ctRaise").value,cap:$("ctCap").value,hold:$("ctHold").value,fee:$("ctFee").value};if(p.pair==="CUSTOM"){p.quote=$("ctQuote").value.trim();p.pool=$("ctPool").value.trim()}return p}
+$("ctPreview").onclick=async()=>{const b=$("ctPreview"),st=$("ctStatus");b.disabled=true;$("ctExecute").hidden=true;st.textContent="Preparando vista previa…";try{const r=await api("/api/create-token",{method:"POST",body:JSON.stringify(await ctPayload())});if(!r.success){st.textContent="Error: "+(r.error||JSON.stringify(r));return}createRequest=r.requestId;st.textContent=r.preview+"\n\nRevisa los parámetros. La vista previa aún no ejecuta la transacción.";$("ctExecute").hidden=!createRequest}catch(e){st.textContent="Error: "+e.message}finally{b.disabled=false}};
+$("ctExecute").onclick=async()=>{if(!createRequest||!_confirm("¿Confirmas la creación? Luego deberás aprobarla en Binance Agentic Wallet."))return;const b=$("ctExecute"),st=$("ctStatus");b.disabled=true;try{const r=await api("/api/create-execute",{method:"POST",body:JSON.stringify({requestId:createRequest})});st.textContent+= "\n"+(r.message||JSON.stringify(r));if(r.success){createRequest=null;b.hidden=true}}catch(e){st.textContent+="\nError: "+e.message}finally{b.disabled=false}};
+$("swTo").onchange=swUI;$("swIn").onclick=()=>{swOut=false;modeUI()};$("swOutB").onclick=()=>{swOut=true;modeUI()};$("swCa").oninput=()=>{clearTimeout(qT);qT=setTimeout(swUI,500)};
+$("tClear").onclick=()=>$("term").replaceChildren();$("tCopy").onclick=()=>navigator.clipboard&&navigator.clipboard.writeText($("term").innerText);
+$("ca").oninput=()=>{clearTimeout(caT);caT=setTimeout(lookup,500)};$("caGo").onclick=lookup;
+$("myBal").onclick=async()=>{const L=$("myList");L.textContent=T2("Leyendo tu billetera…","Reading your wallet…");let r;try{r=await api("/api/mytokens")}catch(e){r={success:false,error:String(e)}}
+ if(!r.success){L.textContent=T2("No se pudo leer: ","Could not read: ")+errTxt(r.error);return}
+ L.innerHTML=(r.tokens.length?r.tokens.map(t=>`<button class="chip" style="display:block;width:100%;text-align:left;margin:3px 0" data-a="${esc(t.address)}"><b>${esc(t.symbol||t.address.slice(0,8))}</b> · ${esc(Number(t.balance).toLocaleString(undefined,{maximumFractionDigits:6}))}</button>`).join(""):esc(T2("No encontré saldo en los tokens conocidos. Pega el contrato arriba.","No balance found in known tokens. Paste the contract above.")))+`<div class="sub">${esc(T2("Billetera ","Wallet "))}${esc(r.wallet.slice(0,6)+"…"+r.wallet.slice(-4))} · ${r.checked} ${esc(T2("tokens revisados","tokens checked"))}</div>`};
+$("myList").onclick=e=>{const b=e.target.closest("[data-a]");if(!b)return;if(mode!=="sell")setMode("sell");$("ca").value=b.dataset.a;lookup()};
+
+$("chips").onclick=e=>{const v=e.target.dataset.v;if(!v)return;forceAll=false;
+ if(v==="all"){forceAll=true;$("amt").value=bal>0?balStr:T2("Todo","All");goState();if(bal>0)est();return}
+ const pc=mode==="sell"||(mode==="swap"&&swOut),B=mode==="swap"?swBal:bal,BS=mode==="swap"?swBalStr:balStr;
+ $("amt").value=!pc?v:(v==="100"?BS:plain(B*v/100));goState();est();};
+$("amt").oninput=()=>{forceAll=false;goState();clearTimeout(qT);qT=setTimeout(est,600)};
+async function est(){const a=$("amt").value.trim();usdLine(a);if(mode==="swap")return swEst(a);if(!sel||!/^\d+(\.\d+)?$/.test(a)||num(a)<=0||sel.graduated)return;
+ const my=++estSeq,mm=mode,sl=sel;
+ const live=()=>my===estSeq&&mode===mm&&sel===sl;
+ if(mm==="sell"){const v=num(a)*(sel.price||0)*0.99;$("est").value=v?v.toPrecision(4):"";
+  $("estNote").textContent=v?"Aproximado: precio actual de la curva menos 1% de fee. El precio real baja a medida que vendes más.":"Sin estimado para este token. El registro mostrará lo que devuelva el CLI.";
+  let r;try{r=await api("/api/quote",{method:"POST",body:JSON.stringify({token:sel.address,amount:a,side:"sell"})})}catch(e){return}
+  if(!live())return;
+  if(r.success&&r.tokensOut){$("est").value=r.tokensOut;$("estNote").textContent=T2("Simulado con el CLI (gang sell): no se envía nada hasta confirmar.","Simulated by the CLI (gang sell): nothing is sent until you confirm.")}
+  return}
+ $("estNote").textContent=T2("Cotizando…","Quoting…");
+ let r;try{r=await api("/api/quote",{method:"POST",body:JSON.stringify({token:sel.address,amount:a,side:"buy"})})}catch(e){r={success:false,error:String(e)}}
+ if(!live())return;
+ if(r.success&&r.tokensOut){$("est").value=r.tokensOut;
+  $("estNote").textContent=r.simulated?T2("Simulado con el CLI (gang buy, token V3): no se envía nada hasta confirmar.","Simulated by the CLI (gang buy, V3 token): nothing is sent until you confirm.")+(r.fee?" Fee "+r.fee:""):"Fee "+(r.fee??"—")+" · reembolso "+(r.refund??"—")}
+ else if(r.success){const p=+(sel.price||0),v=p>0&&isBnbQ(sel)?num(a)/p*0.99:0;$("est").value=v?v.toPrecision(6):"";
+  $("estNote").textContent=T2("Token V3: el CLI necesita un paso previo ("+(r.step||"approve/wrap")+") antes de dar la cifra exacta; se hará solo al comprar."+(v?" Valor aproximado por precio.":""),"V3 token: the CLI needs a prior step ("+(r.step||"approve/wrap")+") before giving the exact figure; it runs automatically when you buy."+(v?" Approximate value from price.":""))}
+ else{$("est").value="";$("estNote").textContent=T2("No se pudo cotizar: ","Could not quote: ")+errTxt(r.error||r)}}
+
+function setTab(s){sort=s;hits=new Set();
+ document.querySelectorAll("#tabs .tab").forEach(b=>b.classList.toggle("on",b.dataset.s===s));
+ $("scanbox").hidden=s!=="scan";audio();tokens=[];$("list").innerHTML='<p class="note">Cargando tokens…</p>';load();}
+$("tabs").onclick=e=>{const s=e.target.dataset.s;if(s)setTab(s)};
+$("go").onclick=async()=>{const a=$("amt").value.trim();if(!a&&!forceAll)return;
+ const T=mode==="swap"?swTarget():null;if(mode==="swap"?!T:!sel)return;
+ const all=mode==="sell"&&(forceAll||(bal>0&&num(a)>=bal));let txt,url,body;
+ if(mode==="swap"){const u=bnbUsd&&!swOut?` (≈ US$ ${(num(a)*bnbUsd).toFixed(2)})`:"";txt=swOut?T2(`Convertir ${a} ${T.symbol} a BNB?`,`Convert ${a} ${T.symbol} to BNB?`,`将 ${a} ${T.symbol} 兑换为 BNB？`,`將 ${a} ${T.symbol} 兌換為 BNB？`):T2(`Convertir ${a} BNB${u} a ${T.symbol}?`,`Convert ${a} BNB${u} to ${T.symbol}?`);url="/api/swap";body={token:T.address,amount:a,dir:swOut?"out":"in"}}
+ else if(mode==="buy"){txt=T2(`Comprar ${sel.symbol} pagando ${a} ${qn(sel.quote)}?`,`Buy ${sel.symbol} paying ${a} ${qn(sel.quote)}?`);url="/api/buy";body={token:sel.address,amount:a,quote:String(sel.quote||""),note:noteTxt()}}
+ else{txt=T2(`Vender ${all?"todo tu saldo":a+" "+sel.symbol} de ${sel.symbol}?`,`Sell ${all?"your whole balance":a+" "+sel.symbol} of ${sel.symbol}?`);url="/api/sell";body={token:sel.address,amount:all?"0":a,all,note:noteTxt()}}
+ const nt=body.note||"";if(!_confirm(tr(txt+"\nSe ejecutarán todos los pasos automáticamente.")+(nt?"\n\n"+tr("Nota pública (permanente en gang.fun): ")+"«"+nt+"»":"")))return;
+ jobBusy=true;$("go").disabled=true;$("log").textContent="";
+ const r=await api(url,{method:"POST",body:JSON.stringify(body)});
+ if(!r.job){$("log").textContent=r.error||"Error";jobBusy=false;goState();return}
+ curJob=r.job;clearInterval(jobT);jobT=setInterval(async()=>{const j=await api("/api/job?id="+curJob).catch(()=>null);if(!j){if(++jobFails>10){clearInterval(jobT);jobBusy=false;goState()}return}jobFails=0;
+  $("log").textContent=(j.log||[]).join("\n");$("log").scrollTop=1e9;
+  $("riskbox").hidden=j.status!=="needs_ack";if(j.status==="needs_ack")$("riskTx").textContent=j.risk||"";
+  if(!["running","needs_ack"].includes(j.status)){clearInterval(jobT);jobBusy=false;if(j.status==="ok")clearNote();goState();
+   if((j.status==="ok"||j.status==="warn")&&mode==="sell"&&sel){setTimeout(lookup,3000)}else if(mode==="buy")modeUI();else if(mode==="swap"&&swOut)setTimeout(()=>swBalLoad(swTarget()),3000)}},1500);};
+const ack=v=>{$("riskbox").hidden=true;api("/api/ack",{method:"POST",body:JSON.stringify({job:curJob,accept:v})})};
+$("riskOk").onclick=()=>ack(true);$("riskNo").onclick=()=>ack(false);
+$("scanNow").onclick=()=>{scanOn=true;$("scanStop").disabled=false;audio();load()};
+$("scanStop").onclick=()=>{scanOn=false;$("scanStop").disabled=true;$("scanSt").textContent="Escáner detenido. Pulsa «Escanear ahora» para reanudarlo.";slog("escáner","Escáner detenido")};
+document.querySelectorAll(".cfg input,#c_bnb,#c_all").forEach(i=>i.onchange=()=>{scan(true);render()});
+$("langSel").value=lang;$("langSel").onchange=()=>setLang($("langSel").value);
+$("supCopy").onclick=async()=>{const a=$("supAddr").textContent,b=$("supCopy");
+ try{await navigator.clipboard.writeText(a)}catch(e){const r=document.createRange();r.selectNodeContents($("supAddr"));const g=getSelection();g.removeAllRanges();g.addRange(r);document.execCommand("copy")}
+ b.textContent="¡Copiado ✓";setTimeout(()=>{b.textContent="Copiar"},1500)};
+$("signBtn").onclick=async()=>{const b=$("signBtn");if(signed)return;b.disabled=true;$("log").textContent="";
+ const r=await api("/api/signin",{method:"POST",body:"{}"});
+ if(!r.job){$("log").textContent=r.error||"Error";b.disabled=false;return}
+ const id=r.job,iv=setInterval(async()=>{const j=await api("/api/job?id="+id);$("log").textContent=(j.log||[]).join("\n");$("log").scrollTop=1e9;
+  if(j.status!=="running"){clearInterval(iv);b.disabled=false;pf()}},1500)};
+setLang(lang);
+$("liveSel").onchange=setLive;document.addEventListener("visibilitychange",()=>{if(!document.hidden&&+$("liveSel").value)load(true)});
+pf();loadPrice();load();modeUI();tick();setLive();setInterval(tick,1200);setInterval(loadPrice,60000);setInterval(pf,120000);
+</script></body></html>
