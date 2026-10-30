@@ -1121,7 +1121,7 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         u = urlparse(self.path); q = parse_qs(u.query)
         if u.path == "/":
-            html = (HERE / "index.html").read_text(encoding="utf-8").replace("__SESSION__", SESSION)
+            html = (HERE / "LobeliaPanelApp.html").read_text(encoding="utf-8").replace("__SESSION__", SESSION)
             return self.send(200, html.encode(), "text/html")
         if u.path in ("/img/icon", "/img/background"):
             if self.headers.get("Host") not in (f"127.0.0.1:{PORT}", f"localhost:{PORT}"):
