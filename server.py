@@ -8,7 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
-VERSION = "2.4"
+VERSION = "2.6"
 HOST, PORT = "127.0.0.1", 8788
 HOME = str(Path.home())
 
@@ -597,6 +597,53 @@ def run_swap(jid, token, amount, out=False):
         BUSY.release()
 
 
+def run_unwrap(jid, amount):
+    """WBNB -> BNB nativo: llama withdraw(uint256) del contrato WBNB con la billetera de Binance (1:1, solo cuesta el gas)."""
+    job = JOBS[jid]
+
+    def log(m):
+        job["log"].append(f"{time.strftime('%H:%M:%S')}  {tr(m)}")
+        slog("orden", m)
+    try:
+        w = wallet_addr()
+        have = wbnb_balance(w)
+        amt = Decimal(amount)
+        if amt > have:
+            raise RuntimeError(f"saldo de WBNB insuficiente: tienes {fmt_bnb(have)} y pediste {amount}")
+        raw = int((amt * (Decimal(10) ** 18)).to_integral_value())
+        if raw <= 0:
+            raise RuntimeError("monto invalido")
+        data = "0x2e1a7d4d" + format(raw, "x").rjust(64, "0")          # withdraw(uint256)
+        log(T(f"Desenvolviendo {amount} WBNB → BNB (withdraw en el contrato WBNB)", f"Unwrapping {amount} WBNB → BNB (withdraw on the WBNB contract)"))
+        p = baw("contract-call", "preview", "--binanceChainId", "56", "--from", w, "--to", WBNB, "--value", "0", "--inputData", data)
+        if not isinstance(p, dict) or p.get("success") is False or not (p.get("data") or {}).get("requestId"):
+            raise RuntimeError("baw rechazó la vista previa: " + json.dumps((p or {}).get("error", p), ensure_ascii=False)[:300])
+        rid = p["data"]["requestId"]
+        log(T("Vista previa aceptada por el motor de riesgo de Binance; ejecutando…", "Preview accepted by Binance's risk engine; executing…"))
+        e = baw("contract-call", "execute", "--requestId", rid)
+        if not isinstance(e, dict) or e.get("success") is False:
+            raise RuntimeError("baw no pudo ejecutar: " + json.dumps((e or {}).get("error", e), ensure_ascii=False)[:300])
+        st = str((e.get("data") or {}).get("status", ""))
+        if st == "PENDING_CONFIRMATION":
+            log(T("Aprueba la operación en la app de Binance…", "Approve the operation in the Binance app…"))
+        for _ in range(60):                                              # hasta ~3 min: el WBNB baja cuando se confirma
+            time.sleep(3)
+            try:
+                if wbnb_balance(w) <= have - amt + Decimal("0.000000000000000001"):
+                    job["status"] = "ok"
+                    log("Listo")
+                    return
+            except Exception:
+                pass
+        job["status"] = "warn"
+        log("No pude verificarla a tiempo: revisa la app de Binance y tu saldo")
+    except Exception as ex:
+        job["status"] = "error"
+        log("Error: " + str(ex))
+    finally:
+        BUSY.release()
+
+
 def find_img(kind):
     """Busca en img/ por palabras del nombre: fondo -> background/fondo/bg; icono -> icon/logo/coin/token."""
     d = HERE / "img"
@@ -1007,22 +1054,67 @@ def rpc_batch(calls):
     raise RuntimeError("no se pudo leer la blockchain (BSC)")
 
 
+LOBELIA_TOKENS = (
+    ("0x5ff77b7f56f145c539a04ce24d9337b4231195e8", "Lobelia Coin", "LOBELIA", "lobelia-icon.png"),
+    ("0x041e95637ea4ab1bf90a935f3730def0e71cfa11", "LobeliaGANG", "LGANG", "LGANG.jpg"),
+    ("0x613e07428692446a62469f8a28eb7cb928518c74", "LobeliaPanel", "LOBP", "LobeliaPanel-logo.jpg"),
+)
+IMG_FILES = {f: dict(IMG_TYPES).get(Path(f).suffix.lower(), "application/octet-stream") for *_, f in LOBELIA_TOKENS}
+
+
+def _hex_str(h):
+    """Decodifica el resultado de symbol() (string ABI o bytes32)."""
+    try:
+        b = bytes.fromhex((h or "")[2:])
+        if len(b) >= 64 and int.from_bytes(b[:32], "big") == 32:
+            n = int.from_bytes(b[32:64], "big")
+            return b[64:64 + n].decode("utf-8", "ignore").strip()
+        return b[:32].rstrip(b"\0").decode("utf-8", "ignore").strip()
+    except Exception:
+        return ""
+
+
+def _baw_wallet_tokens():
+    """Todos los tokens con saldo que ve la billetera de Binance (baw wallet balance), sin ocultar los de poco valor."""
+    out = {}
+    try:
+        r = baw("wallet", "balance", "--binanceChainId", "56", "--hideLowValue", "false", timeout=45)
+        rows = r.get("data") if isinstance(r, dict) else r
+        if isinstance(rows, dict):
+            rows = rows.get("tokens") or rows.get("list") or []
+        for t in rows or []:
+            a = str(t.get("address", ""))
+            if ADDR.match(a) and a.lower() != NATIVE.lower():
+                out[a.lower()] = (a, str(t.get("symbol", "")), str(t.get("balance", "")))
+    except Exception:
+        pass
+    return out
+
+
 def my_tokens():
-    """Saldo de tu billetera en todos los tokens que el panel conoce: listas del mercado + los que abriste/compraste."""
+    """Saldo de tu billetera en todos los tokens: lo que reporta baw + listas del mercado + los que abriste/compraste + los de Lobelia."""
     w = wallet_addr()
-    addrs = {}
-    for k in ("all",):
-        for t in (markets(k, True) or {}).get("tokens", []) or []:
-            if ADDR.match(str(t.get("address", ""))):
-                addrs[t["address"].lower()] = (t["address"], str(t.get("symbol", "")))
+    addrs, found, seen = {}, [], set()
+    for a, name, sym, _ in LOBELIA_TOKENS:
+        addrs[a.lower()] = (a, sym)
+    for t in (markets("all", True) or {}).get("tokens", []) or []:
+        if ADDR.match(str(t.get("address", ""))):
+            addrs.setdefault(t["address"].lower(), (t["address"], str(t.get("symbol", ""))))
     for a in cfg_load().get("known_tokens", []):
         if ADDR.match(a):
             addrs.setdefault(a.lower(), (a, ""))
+    bw = _baw_wallet_tokens()
+    for k, (a, sym, _b) in bw.items():
+        if k in addrs and not addrs[k][1]:
+            addrs[k] = (addrs[k][0], sym)
+        addrs.setdefault(k, (a, sym))
     items, pad = list(addrs.values()), w[2:].lower().rjust(64, "0")
-    found = []
     for i in range(0, len(items), 40):
         chunk = items[i:i + 40]
-        res = rpc_batch([(a, "0x70a08231" + pad) for a, _ in chunk] + [(a, "0x313ce567") for a, _ in chunk])
+        try:
+            res = rpc_batch([(a, "0x70a08231" + pad) for a, _ in chunk] + [(a, "0x313ce567") for a, _ in chunk] + [(a, "0x95d89b41") for a, _ in chunk])
+        except Exception:
+            continue
         n = len(chunk)
         for j, (a, sym) in enumerate(chunk):
             try:
@@ -1034,7 +1126,15 @@ def my_tokens():
                     dec = int(res[n + j], 16) if res[n + j] else 18
                 except Exception:
                     dec = 18
-                found.append({"address": a, "symbol": sym, "balance": format(Decimal(raw) / (Decimal(10) ** dec), "f")})
+                found.append({"address": a, "symbol": sym or _hex_str(res[2 * n + j]) or "", "balance": format(Decimal(raw) / (Decimal(10) ** dec), "f")})
+                seen.add(a.lower())
+    for k, (a, sym, b) in bw.items():          # los que baw ve pero la lectura directa no devolvio
+        try:
+            if k not in seen and Decimal(b) > 0:
+                found.append({"address": a, "symbol": sym, "balance": format(Decimal(b), "f")})
+        except Exception:
+            pass
+    found.sort(key=lambda x: (x["symbol"] or "~").lower())
     return {"success": True, "wallet": w, "checked": len(items), "tokens": found}
 
 
@@ -1193,6 +1293,11 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/":
             html = (HERE / "LobeliaPanelApp.html").read_text(encoding="utf-8").replace("__SESSION__", SESSION)
             return self.send(200, html.encode(), "text/html")
+        if u.path.startswith("/img/t/"):
+            fn = u.path[7:]
+            if fn in IMG_FILES and (HERE / "img" / fn).is_file() and self.headers.get("Host") in (f"127.0.0.1:{PORT}", f"localhost:{PORT}"):
+                return self.send(200, (HERE / "img" / fn).read_bytes(), IMG_FILES[fn])
+            return self.send(404, b"", "text/plain")
         if u.path in ("/img/icon", "/img/background"):
             if self.headers.get("Host") not in (f"127.0.0.1:{PORT}", f"localhost:{PORT}"):
                 return self.send(403, b"", "text/plain")
@@ -1357,7 +1462,8 @@ class H(BaseHTTPRequestHandler):
             if not NUM.match(amount): return self.send(400, {"error": "monto invalido"})
             return self.send(200, swap_quote(token, amount, b.get("dir") == "out"))
         if path == "/api/swap":
-            if token.lower() in NOT_A_TARGET:
+            unwrap = token.lower() == WBNB and b.get("dir") == "out"
+            if token.lower() in NOT_A_TARGET and not unwrap:
                 return self.send(400, {"error": "ese destino es BNB: no hace falta convertir"})
             if not NUM.match(amount) or not float(amount) > 0:
                 return self.send(400, {"error": "monto invalido"})
@@ -1367,7 +1473,7 @@ class H(BaseHTTPRequestHandler):
             JOBS[jid] = {"status": "running", "log": []}
             slog("orden", f"Conversion de {amount} {token} -> BNB iniciada" if out else f"Conversion de {amount} BNB -> {token} iniciada")
             JOBS[jid]["log"].append(tr(f"{time.strftime('%H:%M:%S')}  " + (f"Conversion {token[:8]}… -> BNB iniciada" if out else f"Conversion BNB -> {token[:8]}… iniciada")))
-            threading.Thread(target=run_swap, args=(jid, token, amount, out), daemon=True).start()
+            threading.Thread(target=run_unwrap if unwrap else run_swap, args=((jid, amount) if unwrap else (jid, token, amount, out)), daemon=True).start()
             return self.send(200, {"job": jid})
         if path in ("/api/buy", "/api/sell"):
             kind, use_all = path[5:], bool(b.get("all"))
