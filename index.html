@@ -735,7 +735,39 @@ baw auth signin</pre>
             <button class="btn-copy" id="copyBtn" type="button">Copy</button>
           </div>
 
-          <p class="fine">I hold Lobelia Coin myself. It is experimental and high risk, and nothing here is financial advice.</p>
+          <div class="token-box">
+            <div class="token-info">
+              <img src="img/LGANG.jpg" alt="LobeliaGANG icon" class="token-icon" onerror="this.style.display='none'">
+              <div class="token-text">
+                <b>LobeliaGANG (LGANG)</b>
+                <span>Token on BNB Chain</span>
+              </div>
+            </div>
+            <a href="https://bscscan.com/token/0x041e95637ea4ab1bf90a935f3730def0e71cfa11" class="btn-token" target="_blank" rel="noopener">View ↗</a>
+          </div>
+
+          <div class="addr">
+            <code>0x041e95637ea4ab1bf90a935f3730def0e71cfa11</code>
+            <button class="btn-copy" type="button">Copy</button>
+          </div>
+
+          <div class="token-box">
+            <div class="token-info">
+              <img src="img/LobeliaPanel-logo.jpg" alt="LobeliaPanel icon" class="token-icon" onerror="this.style.display='none'">
+              <div class="token-text">
+                <b>LobeliaPanel (LOBP)</b>
+                <span>Token on BNB Chain</span>
+              </div>
+            </div>
+            <a href="https://bscscan.com/token/0x613e07428692446a62469f8a28eb7cb928518c74" class="btn-token" target="_blank" rel="noopener">View ↗</a>
+          </div>
+
+          <div class="addr">
+            <code>0x613e07428692446a62469f8a28eb7cb928518c74</code>
+            <button class="btn-copy" type="button">Copy</button>
+          </div>
+
+          <p class="fine">I hold these tokens myself. They are experimental and high risk, and nothing here is financial advice.</p>
         </div>
       </aside>
 
@@ -778,21 +810,23 @@ baw auth signin</pre>
         document.getElementById("ghFoot").innerHTML = ' · <a href="' + LINKS.github + '" target="_blank" rel="noopener">Source on GitHub</a>';
       }
 
-      const btn = document.getElementById("copyBtn");
-      btn.addEventListener("click", async function () {
-        const text = document.getElementById("tokenAddr").textContent;
-        try {
-          await navigator.clipboard.writeText(text);
-        } catch (e) {
-          const r = document.createRange();
-          r.selectNodeContents(document.getElementById("tokenAddr"));
-          const s = getSelection();
-          s.removeAllRanges();
-          s.addRange(r);
-          document.execCommand("copy");
-        }
-        btn.textContent = "Copied";
-        setTimeout(function () { btn.textContent = "Copy"; }, 1500);
+      document.querySelectorAll(".btn-copy").forEach(function (btn) {
+        btn.addEventListener("click", async function () {
+          const code = btn.parentElement.querySelector("code");
+          const text = code.textContent.trim();
+          try {
+            await navigator.clipboard.writeText(text);
+          } catch (e) {
+            const r = document.createRange();
+            r.selectNodeContents(code);
+            const s = getSelection();
+            s.removeAllRanges();
+            s.addRange(r);
+            document.execCommand("copy");
+          }
+          btn.textContent = "Copied";
+          setTimeout(function () { btn.textContent = "Copy"; }, 1500);
+        });
       });
     })();
   </script>
