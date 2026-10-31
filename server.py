@@ -8,7 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
-VERSION = "2.3"
+VERSION = "2.4"
 HOST, PORT = "127.0.0.1", 8788
 HOME = str(Path.home())
 
@@ -19,8 +19,78 @@ def _npm_bin(name):
     return str(p) if p.exists() else (shutil.which(name + ".cmd") or shutil.which(name) or name)
 
 
+HERE = Path(__file__).parent
+
+# ---------- compatibilidad Windows con `baw` (sin tocar los archivos de gang, sobrevive a cualquier actualizacion) ----------
+# El CLI de gang ejecuta `baw` con execFileSync('baw') SIN shell: en Windows baw es un baw.cmd y Node no lo encuentra (ENOENT),
+# de ahi el error «baw ... is not installed or not on PATH». Este precargador (NODE_OPTIONS=--require) corrige esa llamada
+# en memoria para cualquier version de gang, asi que ya no hay que reemplazar baw.js despues de cada actualizacion.
+BAW_SHIM_JS = r"""'use strict'
+// LobeliaPanel: hace que gang pueda ejecutar `baw` en Windows (baw.cmd). No hace nada en otros sistemas.
+if (process.platform === 'win32') {
+  const cp = require('node:child_process'), fs = require('node:fs'), path = require('node:path')
+  let cached
+  function resolveBaw() {
+    if (cached !== undefined) return cached
+    cached = null
+    const dirs = (process.env.PATH || process.env.Path || '').split(';').filter(Boolean)
+    if (process.env.APPDATA) dirs.push(path.join(process.env.APPDATA, 'npm'))
+    for (const d of dirs) {
+      if (!fs.existsSync(path.join(d, 'baw.cmd'))) continue
+      for (const root of [path.join(d, 'node_modules'), path.join(d, '..', 'node_modules')]) {
+        try {
+          const pj = path.join(root, '@binance', 'agentic-wallet', 'package.json')
+          const meta = JSON.parse(fs.readFileSync(pj, 'utf8'))
+          const rel = typeof meta.bin === 'string' ? meta.bin : (meta.bin && (meta.bin.baw || Object.values(meta.bin)[0]))
+          const js = rel && path.join(path.dirname(pj), rel)
+          if (js && /\.(c|m)?js$/i.test(js) && fs.existsSync(js)) { cached = { js }; return cached }
+        } catch (e) {}
+      }
+      cached = { cmd: path.join(d, 'baw.cmd') }; return cached
+    }
+    return cached
+  }
+  const q = (a) => /[\s"&|<>^%()]/.test(a) || a === '' ? '"' + String(a).replace(/"/g, '\\"') + '"' : String(a)
+  function fix(file, args, opts) {
+    if (typeof file !== 'string' || !/^baw(\.cmd)?$/i.test(file) || !Array.isArray(args)) return null
+    const r = resolveBaw()
+    if (!r) return null
+    if (r.js) return [process.execPath, [r.js, ...args], opts]
+    return [process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', '"' + [r.cmd, ...args].map(q).join(' ') + '"'], { ...(opts || {}), windowsVerbatimArguments: true }]
+  }
+  for (const name of ['execFileSync', 'spawnSync', 'spawn', 'execFile']) {
+    const orig = cp[name]
+    cp[name] = function (file, args, ...rest) {
+      let opts, tail = rest
+      if (args && !Array.isArray(args)) { opts = args; args = undefined } else if (rest.length && rest[0] && typeof rest[0] === 'object') { opts = rest[0]; tail = rest.slice(1) }
+      const f = fix(file, args, opts)
+      if (!f) return orig.apply(this, arguments)
+      return orig.call(this, f[0], f[1], f[2], ...tail)
+    }
+  }
+}
+"""
+BAW_SHIM_FILE = HERE / "baw-shim.cjs"
+
+
+def _node_env():
+    """Entorno de los CLI: igual que el tuyo + el precargador que arregla `baw` en Windows."""
+    env = os.environ.copy()
+    if os.name == "nt":
+        try:
+            if not BAW_SHIM_FILE.exists() or BAW_SHIM_FILE.read_text(encoding="utf-8") != BAW_SHIM_JS:
+                BAW_SHIM_FILE.write_text(BAW_SHIM_JS, encoding="utf-8")
+            req = '--require "' + str(BAW_SHIM_FILE).replace("\\", "/") + '"'
+            if req not in env.get("NODE_OPTIONS", ""):
+                env["NODE_OPTIONS"] = (env.get("NODE_OPTIONS", "") + " " + req).strip()
+        except Exception:
+            pass
+    return env
+
+
 def _sp(fn, *a, **k):
     k.setdefault("cwd", HOME)   # los CLI se ejecutan desde tu carpeta de usuario, no desde la del servidor
+    k.setdefault("env", _node_env())
     return fn(*a, **k)
 SESSION = secrets.token_urlsafe(24)                      # evita que otras webs llamen a tu API
 GANG = _npm_bin("gang")
