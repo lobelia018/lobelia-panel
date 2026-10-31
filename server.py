@@ -650,9 +650,14 @@ def find_img(kind):
     if not d.is_dir():
         return None
     types = dict(IMG_TYPES)
+    if kind == "icon":      # el logo de Lobelia Coin es siempre lobelia-icon.png (los logos de LGANG y LOBP se sirven aparte)
+        for f in d.iterdir():
+            if f.is_file() and f.name.lower() == "lobelia-icon.png":
+                return f, types[".png"]
+    taken = {x[3].lower() for x in LOBELIA_TOKENS[1:]}
     for f in sorted(d.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
         stem, ext = f.stem.lower(), f.suffix.lower()
-        if not f.is_file() or ext not in types:
+        if not f.is_file() or ext not in types or f.name.lower() in taken:
             continue
         is_bg = any(k in stem for k in ("background", "fondo", "wallpaper", "bg"))
         if (kind == "background" and is_bg) or (kind == "icon" and not is_bg and any(k in stem for k in ("icon", "logo", "coin", "token"))):
