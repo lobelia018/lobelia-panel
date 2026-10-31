@@ -58,6 +58,15 @@ header{flex-wrap:wrap;border-bottom:1px solid rgba(36,48,68,.7);background:rgba(
 .brand{display:flex;flex-direction:column;gap:2px}.brand h1{font-size:22px}.brand h1 em{font-style:normal;color:var(--hi)}
 #signBtn{border-color:var(--hi);color:var(--hi)}#signBtn.ok{border-color:var(--buy);color:var(--buy);cursor:default;pointer-events:none}#signBtn:disabled{opacity:.5;cursor:wait}
 #langSel{background:#0b0f14;border:1px solid var(--line);border-radius:8px;color:var(--tx);padding:5px 8px}
+.more-tok{display:flex;flex-direction:column;gap:12px}
+.mt-row{display:grid;grid-template-columns:44px minmax(0,1fr);gap:10px;align-items:center}
+.mt-row img{width:44px;height:44px;border-radius:50%;object-fit:cover;box-shadow:0 0 12px rgba(246,183,60,.35)}
+.mt-row b{color:var(--hi)}.mt-row .addr{margin-top:4px}
+#swWallet{margin-top:10px;max-height:220px;overflow:auto}
+.wrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 8px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}
+.wrow .wa{grid-column:1/-1;font-size:11px;word-break:break-all;color:#9fb0c6}
+.wrow .wb{display:flex;gap:6px}
+.wrow .chip{cursor:pointer;font-size:12px}
 .rcol{display:flex;flex-direction:column;gap:18px;min-width:0}
 .support{display:grid;grid-template-columns:58px minmax(0,1fr);gap:12px;align-items:center;border-color:rgba(246,183,60,.35)}
 .support.noimg{grid-template-columns:minmax(0,1fr)}
@@ -97,6 +106,10 @@ header{flex-wrap:wrap;border-bottom:1px solid rgba(36,48,68,.7);background:rgba(
 <div class="card support"><img src="/img/icon" alt="" onerror="this.parentElement.classList.add('noimg');this.remove()"><div><b>Apoya a Lobelia Coin</b>
 <div class="note">Compra un poco de mi token para probar el sistema y apoyar el proyecto. Es experimental y de alto riesgo; no es asesoramiento financiero.</div>
 <div class="addr"><code id="supAddr" class="num">0x5ff77b7f56f145c539a04ce24d9337b4231195e8</code><button class="chip" id="supCopy">Copiar</button></div></div></div>
+<div class="card more-tok"><b style="color:var(--hi)">Más tokens de Lobelia</b>
+<div class="mt-row"><img src="/img/t/LGANG.jpg" alt="" onerror="this.style.visibility='hidden'"><div><b>LobeliaGANG (LGANG)</b><div class="addr"><code class="num">0x041e95637ea4ab1bf90a935f3730def0e71cfa11</code><button class="chip cpy" type="button">Copiar</button></div></div></div>
+<div class="mt-row"><img src="/img/t/LobeliaPanel-logo.jpg" alt="" onerror="this.style.visibility='hidden'"><div><b>LobeliaPanel (LOBP)</b><div class="addr"><code class="num">0x613e07428692446a62469f8a28eb7cb928518c74</code><button class="chip cpy" type="button">Copiar</button></div></div></div>
+</div>
 <section class="card sw">
   <div class="tabs"><button class="tab on" id="mBuy">Comprar</button><button class="tab" id="mSell">Vender</button><button class="tab" id="mSwap">Convertir</button><button class="tab" id="mCreate">Crear token nuevo</button></div>
 <section id="createBox" class="box" hidden><h3 style="margin-top:0">Crear un token en gang.fun</h3><p class="note">La versión actual crea los tokens nuevos en GangLaunchpad (V3). V2 ya no admite crear tokens nuevos; los tokens V2 existentes siguen funcionando.</p>
@@ -113,7 +126,8 @@ header{flex-wrap:wrap;border-bottom:1px solid rgba(36,48,68,.7);background:rgba(
 <button class="go" id="ctPreview">Preparar creación (vista previa)</button><div id="ctStatus" class="note" style="margin-top:8px;white-space:pre-wrap"></div><button class="go" id="ctExecute" hidden style="margin-top:8px">Confirmar y ejecutar creación</button><p class="note">La vista previa no publica el token. La ejecución requiere aprobación en la Binance Agentic Wallet.</p></section>
   <div id="sel" class="note">Elige un token de la lista.</div>
   <div class="box" id="caBox" hidden><label for="ca" id="lCa">Contrato del token</label><div class="io"><input id="ca" class="num" style="font-size:14px" placeholder="Pega aquí la dirección 0x…" autocomplete="off" spellcheck="false"><button class="chip" id="caGo">Leer saldo</button></div><div class="chips" style="margin-top:8px"><button class="chip" id="myBal">Mis tokens (saldo)</button></div><div id="myList" class="note" style="margin-top:6px"></div><div class="note" id="caSt" style="margin-top:6px">También puedes tocar un token de la lista.</div></div>
-  <div class="box" id="swBox" hidden><div class="tabs" style="margin-bottom:8px"><button class="tab on" id="swIn">BNB → token</button><button class="tab" id="swOutB">token → BNB</button></div><label for="swTo" id="lSwTo">Convertir BNB a…</label><div class="io"><select id="swTo"></select></div><input id="swCa" class="num" hidden style="margin-top:8px;font-size:13px" placeholder="Contrato 0x… del token destino" autocomplete="off" spellcheck="false"></div>
+  <div class="box" id="swBox" hidden><div class="tabs" style="margin-bottom:8px"><button class="tab on" id="swIn">BNB → token</button><button class="tab" id="swOutB">token → BNB</button></div><label for="swTo" id="lSwTo">Convertir BNB a…</label><div class="io"><select id="swTo"></select></div><input id="swCa" class="num" style="margin-top:8px;font-size:13px" placeholder="Contrato 0x… (pégalo aquí o elige uno de la lista)" autocomplete="off" spellcheck="false"><div class="note" id="swCaSt" style="margin-top:4px"></div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px"><b id="swWTitle" style="font-size:13px">Tokens en tu billetera</b><button class="chip" id="swWRef" type="button" style="cursor:pointer">↻</button></div><div id="swWallet"></div></div>
   <div class="box"><label id="lFrom">Pagas</label>
     <div class="io"><input id="amt" class="num" inputmode="decimal" placeholder="0.0" autocomplete="off"><span class="cur" id="curFrom">BNB</span></div>
     <div class="chips" id="chips"></div><div class="note num" id="usdNote" style="margin-top:6px"></div></div>
@@ -534,6 +548,7 @@ const QN={"0x0000000000000000000000000000000000000000":"BNB","0xbb4cdb9cbd36b01b
 const qn=a=>{a=String(a||"");const s=QN[a.toLowerCase()]||(a.startsWith("0x")?a.slice(0,6)+"…":a||"—");return s==="WBNB"?"BNB":s};
 const QA={GANG:"0x0c6302401aa5325c2e36f170f52c00b1d220b405",USDT:"0x55d398326f99059ff775485246999027b3197955",BNCB:"0x4902c5ebc598265ed2212b559b042de8a5eeec3f",FXION:"0x9b8e987e6fec8cf1380c4dca7071e2c7853aeea1"};
 const NB=["0x0000000000000000000000000000000000000000","0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c","0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"];
+const isWbnb=a=>String(a).toLowerCase()==="0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c";
 const bnbAddr=a=>NB.includes(String(a).toLowerCase());
 const num=s=>parseFloat(String(s??"0").replace(/,/g,""))||0;
 const plain=n=>{if(!isFinite(n)||n<=0)return"0";let t=n.toFixed(n>=1?8:18);return t.replace(/\.?0+$/,"")||"0"};
@@ -613,25 +628,50 @@ async function lookup(){const a=$("ca").value.trim();
  if(mode==="sell"&&balErr)$("caSt").textContent="No se pudo leer tu saldo en la blockchain: "+balErr;
  if(r._degraded)$("caSt").textContent+=" · "+T2("El CLI no reconoce este token (¿V3?); se usan datos de la cadena.","The CLI doesn't recognise this token (V3?); using on-chain data.");
  modeUI();}
-let walletSwapTokens=[];
-async function refreshWalletSwapTokens(){try{const r=await api("/api/mytokens");if(r.success)walletSwapTokens=(r.tokens||[]).filter(t=>isAddr(t.address)&&num(t.balance)>0)}catch(e){}}
-function swOpts(){const o=[];walletSwapTokens.forEach(t=>o.push(["w:"+t.address,`${t.symbol||t.address.slice(0,8)} · saldo ${Number(t.balance).toLocaleString(undefined,{maximumFractionDigits:6})}`]));if(swOut&&sel&&sel.address)o.push(["s",sel.symbol||"token"]);if(sel&&sel.qaddr&&!isBnbQ(sel)&&!Object.values(QA).includes(sel.qaddr.toLowerCase()))o.push(["q","Par de "+sel.symbol+": "+qn(sel.quote)]);
- Object.keys(QA).forEach(k=>o.push([k,k]));o.push(["x","Otra (pegar contrato)…"]);return o}
+let walletSwapTokens=[],swLoading=false,swWalletErr="";
+const shortA=a=>a.slice(0,6)+"…"+a.slice(-4);
+const fmtB=b=>Number(b).toLocaleString(undefined,{maximumFractionDigits:6});
+async function refreshWalletSwapTokens(){if(swLoading)return;swLoading=true;swWalletErr="";renderSwWallet();
+ try{const r=await api("/api/mytokens");if(r.success)walletSwapTokens=(r.tokens||[]).filter(t=>isAddr(t.address)&&num(t.balance)>0);else swWalletErr=errTxt(r.error||"")}catch(e){swWalletErr=String(e)}
+ swLoading=false;renderSwWallet()}
+function renderSwWallet(){const box=$("swWallet");if(!box)return;$("swWTitle").textContent=T2("Tokens en tu billetera","Tokens in your wallet","你钱包中的代币","你錢包中的代幣");
+ if(swLoading&&!walletSwapTokens.length){box.innerHTML='<p class="note">'+esc(T2("Leyendo tu billetera…","Reading your wallet…","正在读取你的钱包…","正在讀取你的錢包…"))+"</p>";return}
+ if(!walletSwapTokens.length){box.innerHTML='<p class="note">'+esc(swWalletErr?T2("No se pudo leer la billetera: ","Could not read the wallet: ","无法读取钱包：","無法讀取錢包：")+swWalletErr:T2("No encontré tokens con saldo en tu billetera.","No tokens with a balance found in your wallet.","未在你的钱包中找到有余额的代币。","未在你的錢包中找到有餘額的代幣。"))+"</p>";return}
+ box.innerHTML=walletSwapTokens.map(t=>`<div class="wrow"><div><b>${esc(t.symbol||shortA(t.address))}</b> <span class="num sub">${esc(fmtB(t.balance))}</span></div><div class="wb"><button class="chip" type="button" data-use="${esc(t.address)}">${esc(T2("Usar","Use","使用","使用"))}</button><button class="chip" type="button" data-cp="${esc(t.address)}">${esc(T2("Copiar","Copy","复制","複製"))}</button></div><div class="wa num">${esc(t.address)}</div></div>`).join("")+(swLoading?'<p class="note">…</p>':"")}
+async function copyTxt(a,btn){try{await navigator.clipboard.writeText(a)}catch(e){const i=document.createElement("input");i.value=a;document.body.appendChild(i);i.select();document.execCommand("copy");i.remove()}
+ if(btn){const o=btn.textContent;btn.textContent="✓";setTimeout(()=>{btn.textContent=o},1200)}}
+function swOpts(){const o=[];walletSwapTokens.forEach(t=>o.push(["w:"+t.address,`${t.symbol||shortA(t.address)} · ${T2("saldo","balance","余额","餘額")} ${fmtB(t.balance)} · ${shortA(t.address)}`]));if(swOut&&sel&&sel.address)o.push(["s",sel.symbol||"token"]);if(sel&&sel.qaddr&&!isBnbQ(sel)&&!Object.values(QA).includes(sel.qaddr.toLowerCase()))o.push(["q","Par de "+sel.symbol+": "+qn(sel.quote)]);
+ Object.keys(QA).forEach(k=>o.push([k,k]));o.push(["x",T2("Otra (pegar contrato)…","Other (paste contract)…","其他（粘贴合约）…","其他（貼上合約）…")]);return o}
+function optForAddr(a){a=String(a||"").toLowerCase();if(!a)return"";const w=walletSwapTokens.find(t=>t.address.toLowerCase()===a);if(w)return"w:"+w.address;
+ for(const k of Object.keys(QA))if(QA[k].toLowerCase()===a)return k;if(sel&&sel.address&&sel.address.toLowerCase()===a&&swOut)return"s";if(sel&&sel.qaddr&&sel.qaddr.toLowerCase()===a)return"q";return""}
+/* reconstruye la lista SIN perder lo que el usuario eligió o pegó (la lectura de la billetera tarda y antes pisaba la selección) */
+function swBuild(){const prevV=$("swTo").value,prevCa=$("swCa").value.trim();
+ $("swTo").innerHTML=swOpts().map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join("");
+ const has=v=>[...$("swTo").options].some(o=>o.value===v);let v;
+ if(swPref){v="x";$("swCa").value=swPref;swPref=""}
+ else if(isAddr(prevCa)){v=optForAddr(prevCa)||"x"}
+ else if(prevCa&&prevV==="x"){v="x"}
+ else if(prevV&&prevV!=="x"&&has(prevV)){v=prevV}
+ else v=walletSwapTokens.length?("w:"+walletSwapTokens[0].address):swDefault();
+ if(!has(v))v=has("GANG")?"GANG":"x";$("swTo").value=v;
+ if(v!=="x"){const T=swTarget();if(T)$("swCa").value=T.address}
+ renderSwWallet()}
 function swDefault(){if(swPref)return"x";if(swOut&&sel&&sel.address)return"s";if(sel&&!isBnbQ(sel)){const q=qn(sel.quote);if(QA[q])return q;if(sel.qaddr)return"q"}return"GANG"}
-function swTarget(){const v=$("swTo").value;if(v.startsWith("w:")){const a=v.slice(2),t=walletSwapTokens.find(x=>x.address.toLowerCase()===a.toLowerCase());return t?{address:t.address,symbol:t.symbol||t.address.slice(0,8),balance:t.balance}:null}if(v==="x"){const a=$("swCa").value.trim();return isAddr(a)?{address:a,symbol:qn(a)}:null}
+function swTarget(){const v=$("swTo").value;if(v.startsWith("w:")){const a=v.slice(2),t=walletSwapTokens.find(x=>x.address.toLowerCase()===a.toLowerCase());return t?{address:t.address,symbol:t.symbol||t.address.slice(0,8),balance:t.balance}:null}if(v==="x"){const a=$("swCa").value.trim();if(!isAddr(a))return null;const w=walletSwapTokens.find(t=>t.address.toLowerCase()===a.toLowerCase());return{address:a,symbol:(w&&w.symbol)||qn(a)}}
  if(v==="s"&&sel&&isAddr(sel.address))return{address:sel.address,symbol:sel.symbol||qn(sel.address)};
  if(QA[v])return{address:QA[v],symbol:v};if(v==="q"&&sel&&sel.qaddr)return{address:sel.qaddr,symbol:qn(sel.quote)};return null}
 async function swBalLoad(T){swBal=0;swBalStr="0";if(!swOut){try{const nb=await api("/api/bnbbalance");if(mode==="swap"&&!swOut&&nb.success){swBal=num(nb.balance);swBalStr=String(nb.balance);$("lFrom").textContent="Conviertes (tu saldo: "+swBal.toLocaleString(undefined,{maximumFractionDigits:6})+" BNB)"}}catch(e){}return}if(!T||!isAddr(T.address))return;const a=T.address;let r;try{r=await api("/api/balance?address="+a)}catch(e){return}
  const c=swTarget();if(!swOut||mode!=="swap"||!c||c.address!==a||!r||!r.success)return;swBalStr=String(r.balance);swBal=num(r.balance);
  $("lFrom").textContent=T2("Conviertes (tu saldo: ","You convert (your balance: ","你兑换（你的余额：","你兌換（你的餘額：")+swBal.toLocaleString()+")"}
-function swUI(){if(mode!=="swap")return;const T=swTarget(),o=swOut;$("swCa").hidden=$("swTo").value!=="x";
+function swUI(){if(mode!=="swap")return;const T=swTarget(),o=swOut;$("swCa").hidden=false;$("swCaSt").textContent=(()=>{const c=$("swCa").value.trim();return c&&!isAddr(c)?T2("Ese contrato no es válido (debe ser 0x + 40 caracteres).","That contract is not valid (0x + 40 characters).","该合约无效（0x + 40 位字符）。","該合約無效（0x + 40 位字元）。"):""})();
  $("swIn").classList.toggle("on",!o);$("swOutB").classList.toggle("on",o);$("lSwTo").textContent=o?"Convertir a BNB desde…":"Convertir BNB a…";
  $("sel").innerHTML=T?(o?`<b>${esc(T.symbol)}</b> → BNB <span class="num sub">${esc(T.address)}</span>`:`BNB → <b>${esc(T.symbol)}</b> <span class="num sub">${esc(T.address)}</span>`):"Elige la moneda destino o pega su contrato.";
  $("curFrom").textContent=o?(T?T.symbol:"—"):"BNB";$("curTo").textContent=o?"BNB":(T?T.symbol:"—");$("lFrom").textContent="Conviertes";
  $("chips").innerHTML=(o?["25","50","75","100"]:["0.001","0.002","0.005","0.01"]).map(v=>`<button class="chip" data-v="${v}">${o?v+"%":v+" BNB"}</button>`).join("");
- $("estNote").textContent=T&&bnbAddr(T.address)?"Los tokens que se pagan con BNB no necesitan conversión.":"";
- $("go").disabled=!T||bnbAddr(T.address);swBalLoad(T);est()}
-async function swEst(a){const T=swTarget();if(!T||bnbAddr(T.address)||!/^\d+(\.\d+)?$/.test(a)){$("est").value="";return}
+ const uw=!!T&&o&&isWbnb(T.address);
+ $("estNote").textContent=uw?T2("WBNB → BNB: se desenvuelve 1:1 (solo pagas el gas).","WBNB → BNB: unwrapped 1:1 (you only pay gas).","WBNB → BNB：1:1 解包（仅需支付 gas）。","WBNB → BNB：1:1 解包（僅需支付 gas）。"):T&&bnbAddr(T.address)?"Los tokens que se pagan con BNB no necesitan conversión.":"";
+ $("go").disabled=!T||(bnbAddr(T.address)&&!uw);swBalLoad(T);est()}
+async function swEst(a){const T=swTarget();if(T&&swOut&&isWbnb(T.address)&&/^\d+(\.\d+)?$/.test(a)){$("est").value=a;return}if(!T||bnbAddr(T.address)||!/^\d+(\.\d+)?$/.test(a)){$("est").value="";return}
  $("estNote").textContent="Cotizando…";const o=swOut,r=await api("/api/swapquote",{method:"POST",body:JSON.stringify({token:T.address,amount:a,dir:o?"out":"in"})});
  if($("amt").value.trim()!==a||mode!=="swap"||o!==swOut)return;
  if(r.success&&r.out){$("est").value=r.out;const rt=o?T.symbol+" → USDT ("+r.mid+") → BNB":"BNB → USDT ("+r.mid+") → "+T.symbol;
@@ -651,7 +691,7 @@ async function modeUI(){const b=mode==="buy",s=mode==="sell",w=mode==="swap",bq=
  $("curFrom").textContent=w?"BNB":sel?(b?qn(sel.quote):sel.symbol):"—";$("curTo").textContent=w?"—":sel?(b?sel.symbol:qn(sel.quote)):"—";
  forceAll=false;$("chips").innerHTML=(s?["25","50","75","100","all"]:(b&&sel&&!bq?[]:["0.001","0.002","0.005","0.01"])).map(v=>`<button class="chip" data-v="${v}">${v==="all"?T2("Todo","All"):s?v+"%":v+" BNB"}</button>`).join("");
  $("caGo").textContent=s?"Leer saldo":"Obtener Precios";$("go").textContent=w?"Convertir":b?"Comprar":"Vender";$("go").className="go"+(s?" sell":"");$("est").value="";$("amt").value="";$("usdNote").textContent="";$("go").disabled=true;
- if(w){await refreshWalletSwapTokens();$("swTo").innerHTML=swOpts().map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join("");$("swTo").value=swPref?"x":(walletSwapTokens.length?("w:"+walletSwapTokens[0].address):swDefault());if(swPref){$("swCa").value=swPref;swPref=""}swUI();return}
+ if(w){swBuild();swUI();refreshWalletSwapTokens().then(()=>{if(mode!=="swap")return;const before=(swTarget()||{}).address;swBuild();if((swTarget()||{}).address!==before)swUI()});return}
  let n="";
  if(b&&sel){if(sel.graduated){n="Este token ya graduó: se compra en PancakeSwap, no en la curva.";jumpBtn("Comprarlo con BNB en PancakeSwap…",sel.address)}
   else{if(!bq){n="Se paga con "+qn(sel.quote)+": el monto va en "+qn(sel.quote)+". Si no tienes saldo, conviértelo desde BNB.";jumpBtn("Conseguir "+qn(sel.quote)+" con BNB…","")}
@@ -679,7 +719,11 @@ $("ctKind").onchange=()=>{const f=$("ctKind").value==="fair";$("ctFairFields").h
 async function ctPayload(){const f=$("ctLogo").files[0];if(!f)throw Error("Selecciona la imagen del logo.");if(f.size>512*1024)throw Error("El logo debe pesar 512 KB o menos.");if(!["image/png","image/jpeg","image/webp"].includes(f.type))throw Error("Usa PNG, JPG o WEBP.");const logoData=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(",")[1]);r.onerror=rej;r.readAsDataURL(f)});const p={name:$("ctName").value.trim(),symbol:$("ctSymbol").value.trim().toUpperCase(),logo:f.name,mime:f.type,logoData,note:$("ctNote").value.trim(),kind:$("ctKind").value,website:$("ctWebsite").value.trim(),twitter:$("ctTwitter").value.trim(),pair:$("ctPair").value,buyTax:$("ctBuyTax").value,sellTax:$("ctSellTax").value,dividend:$("ctDividend").value,raise:$("ctRaise").value,cap:$("ctCap").value,hold:$("ctHold").value,fee:$("ctFee").value};if(p.pair==="CUSTOM"){p.quote=$("ctQuote").value.trim();p.pool=$("ctPool").value.trim()}return p}
 $("ctPreview").onclick=async()=>{const b=$("ctPreview"),st=$("ctStatus");b.disabled=true;$("ctExecute").hidden=true;st.textContent="Preparando vista previa…";try{const r=await api("/api/create-token",{method:"POST",body:JSON.stringify(await ctPayload())});if(!r.success){st.textContent="Error: "+(r.error||JSON.stringify(r));return}createRequest=r.requestId;st.textContent=r.preview+"\n\nRevisa los parámetros. La vista previa aún no ejecuta la transacción.";$("ctExecute").hidden=!createRequest}catch(e){st.textContent="Error: "+e.message}finally{b.disabled=false}};
 $("ctExecute").onclick=async()=>{if(!createRequest||!_confirm("¿Confirmas la creación? Luego deberás aprobarla en Binance Agentic Wallet."))return;const b=$("ctExecute"),st=$("ctStatus");b.disabled=true;try{const r=await api("/api/create-execute",{method:"POST",body:JSON.stringify({requestId:createRequest})});st.textContent+= "\n"+(r.message||JSON.stringify(r));if(r.success){createRequest=null;b.hidden=true}}catch(e){st.textContent+="\nError: "+e.message}finally{b.disabled=false}};
-$("swTo").onchange=swUI;$("swIn").onclick=()=>{swOut=false;modeUI()};$("swOutB").onclick=()=>{swOut=true;modeUI()};$("swCa").oninput=()=>{clearTimeout(qT);qT=setTimeout(swUI,500)};
+$("swTo").onchange=()=>{const v=$("swTo").value;if(v==="x"){$("swCa").focus()}else{const T=swTarget();if(T)$("swCa").value=T.address}swUI()};
+$("swWRef").onclick=()=>refreshWalletSwapTokens().then(()=>{if(mode==="swap"){const before=(swTarget()||{}).address;swBuild();if((swTarget()||{}).address!==before)swUI()}});
+$("swWallet").onclick=e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.cp)return copyTxt(b.dataset.cp,b);if(b.dataset.use){$("swCa").value=b.dataset.use;$("swTo").value=optForAddr(b.dataset.use)||"x";swUI()}};
+document.querySelectorAll(".cpy").forEach(b=>b.onclick=()=>copyTxt(b.previousElementSibling.textContent.trim(),b));
+$("swIn").onclick=()=>{swOut=false;modeUI()};$("swOutB").onclick=()=>{swOut=true;modeUI()};$("swCa").oninput=()=>{clearTimeout(qT);qT=setTimeout(()=>{const a=$("swCa").value.trim();$("swTo").value=(isAddr(a)&&optForAddr(a))||"x";swUI()},400)};
 $("tClear").onclick=()=>$("term").replaceChildren();$("tCopy").onclick=()=>navigator.clipboard&&navigator.clipboard.writeText($("term").innerText);
 $("ca").oninput=()=>{clearTimeout(caT);caT=setTimeout(lookup,500)};$("caGo").onclick=lookup;
 $("myBal").onclick=async()=>{const L=$("myList");L.textContent=T2("Leyendo tu billetera…","Reading your wallet…");let r;try{r=await api("/api/mytokens")}catch(e){r={success:false,error:String(e)}}
