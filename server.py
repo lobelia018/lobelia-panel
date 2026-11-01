@@ -100,6 +100,7 @@ HASH = re.compile(r"^0x[0-9a-fA-F]{64}$")
 BAW = _npm_bin("baw")
 JOBS, EVENTS, BUSY = {}, {}, threading.Lock()
 CREATE_REQUESTS = {}
+PF_CACHE = {"r": None}
 HERE = Path(__file__).parent
 
 
@@ -421,7 +422,7 @@ def _cli(tag, exe, args, timeout, extra=(), quiet=False):
 
 
 WL = threading.Lock()
-WALLET_CMDS = {"preflight", "token", "buy", "sell", "execute", "quote", "tx", "info"}
+WALLET_CMDS = {"preflight", "token", "buy", "sell", "execute", "quote", "tx", "info", "creator-fee"}
 
 
 CLI_UPDATE = {"info": None}
@@ -714,7 +715,15 @@ def run_signin(jid, action="signin"):
 
 
 def wait_confirm(tx, log, tries=25):
-    for _ in range(tries):
+    for _ in range(60):                                   # recibo directo de BSC: ~1 s, sin pasar por el CLI ni la billetera
+        rc = _bsc_rpc("eth_getTransactionReceipt", [tx])
+        if isinstance(rc, dict) and rc.get("status") is not None:
+            if int(str(rc["status"]), 16) == 1:
+                log("Confirmada en la blockchain")
+                return
+            raise RuntimeError("la transaccion fallo: " + tx)
+        time.sleep(1)
+    for _ in range(tries):                                # plan B (el de siempre)
         r = gang("tx", "--hash", tx)
         st = str(r.get("status", "")).lower()
         if r.get("success") and st == "success":
@@ -724,20 +733,6 @@ def wait_confirm(tx, log, tries=25):
             raise RuntimeError("la transaccion fallo: " + tx)
         time.sleep(3)
     raise RuntimeError("no se pudo confirmar a tiempo: " + tx)
-
-
-def baw_seen(order_id, tries=40):
-    """Busca la orden en el historial de la billetera (se aprueba en la app de Binance)."""
-    for _ in range(tries):
-        try:
-            p = _sp(subprocess.run, [BAW, "wallet", "tx-history", "--binanceChainId", "56", "--type", "confirmed", "--json"],
-                               capture_output=True, text=True, encoding="utf-8", timeout=60)
-            if order_id and str(order_id) in p.stdout:
-                return True
-        except Exception:
-            pass
-        time.sleep(3)
-    return False
 
 
 MK, MK_LOCK = {}, threading.Lock()      # cache corto: varias pestanas/refrescos no lanzan el CLI en paralelo
@@ -804,7 +799,7 @@ def _markets(sort, quiet):
     return {"success": bool(merged), "tokens": merged, "partial": failed, "counts": counts, "error": "no se pudo leer el mercado"}
 
 
-def run_order(jid, kind, token, amount, use_all, note="", quote=""):
+def run_order(jid, kind, token, amount, use_all, note="", quote="", fresh=False):
     job, ev = JOBS[jid], EVENTS[jid]
 
     def log(m):
@@ -833,6 +828,12 @@ def run_order(jid, kind, token, amount, use_all, note="", quote=""):
             if note:
                 args += ["--note", note]                  # nota publica que viaja con la operacion (gang buy|sell --note)
             r = gang(*args)
+            if fresh and not r.get("success"):               # token recien creado: el CLI puede tardar unos segundos en verlo
+                for _t in range(8):
+                    if re.search(r"not enough BNB|native BNB|insufficient (funds|balance)", err_text(r.get("error", r)), re.I): break
+                    time.sleep(1)
+                    r = gang(*args)
+                    if r.get("success"): break
             if not r.get("success"):
                 err = err_text(r.get("error", r))
                 if kind == "buy" and re.search(r"not enough BNB|native BNB|insufficient (funds|balance)", err, re.I):
@@ -890,6 +891,205 @@ def run_order(jid, kind, token, amount, use_all, note="", quote=""):
         log("Error: " + str(ex))
     finally:
         BUSY.release()
+
+
+# ---------- crear token + compra inicial automatica ----------
+def _bsc_rpc(method, params):
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode()
+    for u in RPCS:
+        try:
+            req = urllib.request.Request(u, data=body, headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                j = json.loads(r.read())
+            if j.get("result") is not None:
+                return j["result"]
+        except Exception:
+            pass
+    return None
+
+
+def _addr_in(o, names):
+    """Primera direccion 0x valida bajo alguna de las claves `names` (acepta dicts anidados)."""
+    for n in names:
+        v = find(o, [n])
+        if isinstance(v, dict):
+            v = find(v, ["address", "tokenAddress", "contractAddress"])
+        if isinstance(v, str) and ADDR.match(v):
+            return v
+    return None
+
+
+TOKEN_KEYS = ["tokenAddress", "token_address", "contractAddress", "contract_address", "tokenContract", "createdToken", "newToken", "token"]
+TRANSFER_T0 = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+
+
+def _token_from_tx(txh, symbol):
+    """Plan B: la direccion del token nuevo = contrato que emite el primer Transfer desde 0x0 en la transaccion de creacion."""
+    rc = _bsc_rpc("eth_getTransactionReceipt", [txh])
+    if not isinstance(rc, dict):
+        return None
+    for lg in rc.get("logs") or []:
+        t = lg.get("topics") or []
+        if len(t) >= 3 and t[0].lower() == TRANSFER_T0 and int(t[1], 16) == 0 and ADDR.match(str(lg.get("address", ""))):
+            try:
+                sym = re.sub(r"[^\w .$\-]", "", _abi_str(rpc_call(lg["address"], "0x95d89b41")))
+            except Exception:
+                sym = ""
+            if not sym or sym.upper() == symbol.upper():
+                return lg["address"]
+    return None
+
+
+def _token_from_new(symbol, name):
+    """Plan C: buscar el token recien creado en la lista de nuevos de gang (por simbolo y nombre)."""
+    r = gang("new", "--max-age", "1h", quiet=True)
+    best = None
+    for t in _tokens_of(r) or []:
+        a = t.get("address") or t.get("tokenAddress")
+        if isinstance(a, str) and ADDR.match(a) and str(t.get("symbol", "")).upper() == symbol.upper():
+            if str(t.get("name", "")).strip().lower() == name.strip().lower():
+                return a
+            best = best or a
+    return best
+
+
+def creator_fee_view(token):
+    """`gang creator-fee --token X` (solo lectura): cuanto hay para reclamar."""
+    r = gang("creator-fee", "--token", token, timeout=120)
+    if not isinstance(r, dict) or r.get("success") is False:
+        return {"error": err_text(r.get("error", r) if isinstance(r, dict) else r, 300)}
+    v = find(r, ["claimable", "claimableAmount", "claimable_amount", "unclaimed", "pending"])
+    if isinstance(v, dict):
+        v = find(v, ["formatted", "amount", "value"])
+    unit = find(r, ["quoteSymbol", "symbol", "unit", "currency"])
+    return {"claimable": None if v is None else str(v), "unit": str(unit) if isinstance(unit, str) else "", "raw": err_text(r, 600)}
+
+
+def run_claim_fee(jid, token):
+    """`gang creator-fee --token X --claim`: prepara el reclamo, lo ejecuta y espera la confirmacion."""
+    job = JOBS[jid]
+
+    def log(m):
+        job["log"].append(f"{time.strftime('%H:%M:%S')}  {tr(m)}")
+        slog("orden", m)
+    try:
+        log("Preparando el reclamo de comisión de creador…")
+        r = gang("creator-fee", "--token", token, "--claim", timeout=180)
+        if not isinstance(r, dict) or r.get("success") is False:
+            raise RuntimeError(err_text(r.get("error", r) if isinstance(r, dict) else r))
+        rid, txh, e = find(r, ["requestId"]), find(r, ["txHash", "transactionHash"]), r
+        if rid and not txh:                                  # el CLI dejo la operacion preparada: se ejecuta
+            log("Ejecutando… aprueba en la app de Binance si te lo pide")
+            e = gang("execute", "--request-id", str(rid), timeout=240)
+            if not isinstance(e, dict) or e.get("success") is False:
+                raise RuntimeError(err_text(e.get("error", e) if isinstance(e, dict) else e))
+            txh = find(e, ["txHash", "transactionHash"])
+        if isinstance(e, dict) and e.get("pendingConfirmation"):
+            log("Esperando tu aprobación en la app de Binance (hasta 2 min)")
+            if not baw_seen(e.get("orderId")):
+                raise RuntimeError("no se pudo confirmar el reclamo; revisa la app de Binance.")
+        elif txh:
+            log("Enviada: " + str(txh))
+            wait_confirm(str(txh), log)
+        else:
+            log(err_text(e, 400))
+        job["status"] = "ok"
+        log("Listo: comisión de creador reclamada ✓")
+    except Exception as ex:
+        job["status"] = "error"
+        log("Error: " + str(ex))
+    finally:
+        BUSY.release()
+
+
+def preapprove_quote(quote, amount, log):
+    """Deja aprobada la moneda par ANTES de crear el token, para que la compra inicial no gaste ~30 s en el paso approve-quote.
+    Usa como referencia un token V3 ya existente con la misma moneda par: si `gang buy` pide approve-quote, se ejecuta
+    SOLO esa aprobacion; la compra de referencia nunca se ejecuta."""
+    toks = (markets("all", True) or {}).get("tokens", []) or []
+    ref = None
+    for t in toks:
+        q = t.get("quote")
+        q = find(q, ["address"]) if isinstance(q, dict) else q
+        a = t.get("address") or t.get("tokenAddress")
+        if isinstance(a, str) and ADDR.match(a) and str(q or "").lower() == quote.lower() and not t.get("graduated"):
+            ref = a
+            break
+    if not ref:
+        log("Pre-aprobación: no hay un token de referencia con esa moneda par; se aprobará después de crear.")
+        return
+    log("Pre-aprobando la moneda par (antes de crear, no afecta la velocidad de compra)…")
+    r = gang("buy", "--token", ref, "--bnb", amount)
+    if not isinstance(r, dict) or not r.get("success"):
+        log("Pre-aprobación: el CLI no la preparó (" + err_text(r.get("error", r) if isinstance(r, dict) else r, 120) + ")")
+        return
+    step = str(r.get("step", "?"))
+    if not step.startswith("approve"):
+        log(f"Pre-aprobación: no hace falta (paso: {step}).")
+        return
+    if r.get("risks"):
+        log("Pre-aprobación omitida: Binance marcó un riesgo en la referencia.")
+        return
+    rid = r.get("requestId")
+    e = gang("execute", "--request-id", rid) if rid else None
+    if not isinstance(e, dict) or not e.get("success"):
+        log("Pre-aprobación: falló la ejecución; se aprobará después de crear.")
+        return
+    if e.get("txHash") and not e.get("pendingConfirmation"):
+        wait_confirm(str(e["txHash"]), log)
+    elif e.get("pendingConfirmation"):
+        if not baw_seen(e.get("orderId")):
+            log("Pre-aprobación: no se pudo confirmar; se aprobará después de crear si hace falta.")
+            return
+    log("Moneda par aprobada ✓")
+
+
+def run_create_buy(jid, rid, item):
+    """Ejecuta la creacion ya previsualizada y, en cuanto el token existe, compra `item['buy']` de la moneda par."""
+    job = JOBS[jid]
+
+    def log(m):
+        job["log"].append(f"{time.strftime('%H:%M:%S')}  {tr(m)}")
+        slog("orden", m)
+    handed_over = False
+    try:
+        if item.get("buy") and not is_bnb_quote(item.get("quote")):
+            try:
+                preapprove_quote(item["quote"], item["buy"], log)
+            except Exception as ex:                    # nunca bloquea la creacion
+                log("Pre-aprobación omitida: " + str(ex)[:200])
+        log("Creando el token… aprueba la operación en la app de Binance si te la pide")
+        e = gang("execute", "--request-id", rid, timeout=240)
+        if not isinstance(e, dict) or e.get("success") is False:
+            raise RuntimeError(err_text(e.get("error", e) if isinstance(e, dict) else e))
+        txh = find(e, ["txHash", "transactionHash"])
+        if e.get("pendingConfirmation"):
+            log("Esperando tu aprobación en la app de Binance (hasta 2 min)")
+            if not baw_seen(e.get("orderId")):
+                raise RuntimeError("no se pudo confirmar la creación; revisa la app de Binance. No se compró nada.")
+        elif txh:
+            log("Creación enviada: " + str(txh))
+            wait_confirm(str(txh), log)
+        addr = _addr_in(e, TOKEN_KEYS)
+        if not addr and txh:
+            addr = _token_from_tx(str(txh), item["symbol"])
+        if not addr:
+            for _ in range(6):
+                addr = _token_from_new(item["symbol"], item["name"])
+                if addr: break
+                time.sleep(2)
+        if not addr:
+            raise RuntimeError("el token se creó, pero no pude saber su dirección; la compra inicial NO se hizo (cómpralo desde la lista).")
+        log(f"Token creado: {addr}")
+        log(f"Compra inicial: {item['buy']} " + ("BNB" if is_bnb_quote(item.get("quote")) else "(moneda par)"))
+        handed_over = True                              # run_order suelta BUSY por su cuenta
+        run_order(jid, "buy", addr, item["buy"], False, "", item.get("quote", ""), fresh=True)
+    except Exception as ex:
+        job["status"] = "error"
+        log("Error: " + str(ex))
+    finally:
+        if not handed_over:
+            BUSY.release()
 
 
 # ---------- saldo y datos leidos directamente de BSC (sirve para tokens V2 y V3) ----------
@@ -1354,7 +1554,11 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/bnbprice":
             return self.send(200, bnb_usd())
         if u.path == "/api/preflight":
+            if BUSY.locked() and PF_CACHE["r"] is not None:   # orden en curso: se responde con la ultima comprobacion buena
+                return self.send(200, PF_CACHE["r"])
             r = gang("preflight")
+            if isinstance(r, dict) and (r.get("success") or r.get("status") == "CONNECTED"):
+                PF_CACHE["r"] = r
             if isinstance(r, dict) and isinstance(r.get("address"), str) and ADDR.match(r["address"]):
                 WALLET["addr"] = r["address"]          # por si cambiaste de cuenta
             return self.send(200, r)
@@ -1363,7 +1567,7 @@ class H(BaseHTTPRequestHandler):
         self.send(404, {"error": "no existe"})
 
     POST_PATHS = {"/api/lang", "/api/signin", "/api/signout", "/api/log", "/api/ack",
-                  "/api/quote", "/api/swapquote", "/api/swap", "/api/buy", "/api/sell", "/api/create-token", "/api/create-execute"}
+                  "/api/quote", "/api/swapquote", "/api/swap", "/api/buy", "/api/sell", "/api/create-token", "/api/create-execute", "/api/creator-fee"}
 
     def do_POST(self):
         if not self.guard(): return
@@ -1425,6 +1629,10 @@ class H(BaseHTTPRequestHandler):
                 quote, pool = str(b.get("quote", "")), str(b.get("pool", ""))
                 if not ADDR.match(quote) or not ADDR.match(pool): temp.unlink(missing_ok=True); return self.send(400, {"success":False,"error":"Se requieren contratos válidos para moneda par y pool."})
                 args += ["--quote", quote, "--ref-pool", pool]
+            buy = str(b.get("initialBuy", "")).strip().replace(",", ".")
+            if buy:
+                if b.get("kind") != "v3": temp.unlink(missing_ok=True); return self.send(400, {"success":False,"error":"La compra inicial solo está disponible en GangLaunchpad V3."})
+                if not NUM.match(buy) or not Decimal(buy) > 0: temp.unlink(missing_ok=True); return self.send(400, {"success":False,"error":"Compra inicial no válida: usa un número mayor que cero, por ejemplo 0.01."})
             purge_create()
             if not BUSY.acquire(blocking=False): temp.unlink(missing_ok=True); return self.send(409, {"success":False,"error":"Ya hay otra operación en curso."})
             try:
@@ -1440,7 +1648,9 @@ class H(BaseHTTPRequestHandler):
             if not rid:
                 temp.unlink(missing_ok=True)
                 return self.send(200, {"success": False, "error": "El CLI no devolvió requestId; no se ejecutó nada.", "preview": json.dumps(result, ensure_ascii=False, indent=2)})
-            CREATE_REQUESTS[str(rid)] = {"logo": str(temp), "created": time.time()}
+            CREATE_REQUESTS[str(rid)] = {"logo": str(temp), "created": time.time(), "buy": buy,
+                                         "quote": str(b.get("quote", "")) if b.get("pair") == "CUSTOM" else "",
+                                         "name": name, "symbol": symbol}
             return self.send(200, {"success": True, "requestId": str(rid), "preview": json.dumps(result, ensure_ascii=False, indent=2)})
         if self.path == "/api/create-execute":
             rid = str(b.get("requestId", "")); item = CREATE_REQUESTS.get(rid)
@@ -1448,6 +1658,13 @@ class H(BaseHTTPRequestHandler):
                 if item: Path(item["logo"]).unlink(missing_ok=True); CREATE_REQUESTS.pop(rid, None)
                 return self.send(400, {"success": False, "error": "Vista previa vencida; vuelve a prepararla."})
             if not BUSY.acquire(blocking=False): return self.send(409, {"success": False, "error": "Ya hay otra operación en curso."})
+            if item.get("buy"):                           # crear + comprar: un solo trabajo; BUSY se suelta al terminar la compra
+                CREATE_REQUESTS.pop(rid, None)
+                jid = uuid.uuid4().hex[:8]
+                JOBS[jid] = {"status": "running", "log": []}
+                EVENTS[jid] = {"set": threading.Event(), "ok": False}
+                threading.Thread(target=run_create_buy, args=(jid, rid, item), daemon=True).start()
+                return self.send(200, {"success": True, "job": jid})
             try:
                 result = gang("execute", "--request-id", rid, timeout=240)
             except Exception as ex:
@@ -1479,6 +1696,15 @@ class H(BaseHTTPRequestHandler):
             slog("orden", f"Conversion de {amount} {token} -> BNB iniciada" if out else f"Conversion de {amount} BNB -> {token} iniciada")
             JOBS[jid]["log"].append(tr(f"{time.strftime('%H:%M:%S')}  " + (f"Conversion {token[:8]}… -> BNB iniciada" if out else f"Conversion BNB -> {token[:8]}… iniciada")))
             threading.Thread(target=run_unwrap if unwrap else run_swap, args=((jid, amount) if unwrap else (jid, token, amount, out)), daemon=True).start()
+            return self.send(200, {"job": jid})
+        if path == "/api/creator-fee":
+            if not b.get("claim"):
+                return self.send(200, creator_fee_view(token))
+            if not BUSY.acquire(blocking=False):
+                return self.send(409, {"error": "ya hay una operacion en curso, espera a que termine"})
+            jid = uuid.uuid4().hex[:8]
+            JOBS[jid] = {"status": "running", "log": []}
+            threading.Thread(target=run_claim_fee, args=(jid, token), daemon=True).start()
             return self.send(200, {"job": jid})
         if path in ("/api/buy", "/api/sell"):
             kind, use_all = path[5:], bool(b.get("all"))
