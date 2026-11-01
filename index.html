@@ -637,12 +637,12 @@
           <h2 style="justify-content: center;">🚀 Download</h2>
           <p style="color: var(--text-muted); margin-bottom: 25px;">Free and portable. The panel itself uses only Python’s standard library.</p>
 
-          <a href="#" id="dlBtn" class="btn-download" aria-disabled="true" target="_blank" rel="noopener">
+          <a href="https://drive.google.com/drive/folders/1HlS3svWFLIoGkuq6-Pvx5GZPu8xV_qaO?usp=drive_link" id="dlBtn" class="btn-download" target="_blank" rel="noopener">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            <span id="dlText">Download coming soon</span>
+            <span id="dlText">Download LobeliaPanel (Google Drive)</span>
           </a>
-          <div><a href="#" id="ghLink" class="link-gh" target="_blank" rel="noopener" hidden>View the source on GitHub</a></div>
-          <p id="ghSoon" class="fine">The source code will be published on GitHub when the project is ready.</p>
+          <div><a href="https://github.com/lobelia018/lobelia-panel" id="ghLink" class="link-gh" target="_blank" rel="noopener">View the source on GitHub</a></div>
+          <p id="ghSoon" class="fine" hidden>The source code will be published on GitHub when the project is ready.</p>
 
           <div class="reqs">
             <h3>Before you start, you need</h3>
@@ -658,7 +658,7 @@ baw auth signin</pre>
           <div class="steps">
             <div class="step">
               <div class="step-num">Step 1</div>
-              <p>Extract the zip file into any folder on your PC.</p>
+              <p>Open the Drive folder and download it (Drive gives you a zip), then extract it into any folder on your PC.</p>
             </div>
             <div class="step">
               <div class="step-num">Step 2</div>
@@ -784,7 +784,7 @@ baw auth signin</pre>
     // Enlaces integrados directamente
     const LINKS = {
       video: "d9aZobSxq2o",     // YouTube video ID
-      download: "https://drive.google.com/file/d/1u5EkZqTh6SqkeY7vDOMQo89dMggP3-IG/view?usp=drive_link",  // Google Drive
+      download: "https://drive.google.com/drive/folders/1HlS3svWFLIoGkuq6-Pvx5GZPu8xV_qaO?usp=drive_link",  // Google Drive (carpeta)
       github: "https://github.com/lobelia018/lobelia-panel"     // GitHub Repository
     };
 
@@ -799,7 +799,7 @@ baw auth signin</pre>
         const b = document.getElementById("dlBtn");
         b.href = LINKS.download;
         b.removeAttribute("aria-disabled");
-        document.getElementById("dlText").textContent = "Download LobeliaPanel (.zip)";
+        document.getElementById("dlText").textContent = "Download LobeliaPanel (Google Drive)";
       }
 
       if (LINKS.github) {
